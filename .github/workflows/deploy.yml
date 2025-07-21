@@ -15,6 +15,7 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest # Use a fresh Ubuntu runner provided by GitHub
+    timeout-minutes: 20  # Add timeout to prevent hanging builds
 
     steps:
       - name: Checkout code
@@ -49,9 +50,13 @@ jobs:
             # Ensure Docker is logged in to ACR on the VM
             # Note: ACR_USERNAME and ACR_PASSWORD here are also sourced from GitHub Secrets indirectly through the environment variables,
             # or directly from secrets if you preferred. Using secrets.ACR_USERNAME here is robust.
-            sudo docker login ${{ env.ACR_NAME }}.azurecr.io \
+            echo "Logging into ACR..."
+            if ! sudo docker login ${{ env.ACR_NAME }}.azurecr.io \
               --username "${{ secrets.ACR_USERNAME }}" \
-              --password "${{ secrets.ACR_PASSWORD }}"
+              --password "${{ secrets.ACR_PASSWORD }}"; then
+              echo "Failed to login to ACR"
+              exit 1
+            fi
 
             # Stop and remove existing container if running
             if [ "$(sudo docker ps -q -f name=${{ env.IMAGE_NAME }})" ]; then
@@ -71,4 +76,21 @@ jobs:
             echo "Running new container..."
             sudo docker run -d -p 80:80 --name ${{ env.IMAGE_NAME }} ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
-            echo "Deployment complete!"
+            # Verify container is running
+            echo "Verifying container status..."
+            if ! sudo docker ps | grep -q "${{ env.IMAGE_NAME }}"; then
+              echo "Container failed to start!"
+              exit 1
+            fi
+
+            # Wait for container to be healthy (adjust sleep time as needed)
+            echo "Waiting for container to initialize..."
+            sleep 10
+
+            # Basic health check
+            if ! curl -f http://localhost:80/; then
+              echo "Container health check failed!"
+              exit 1
+            fi
+
+            echo "Deployment complete and verified!"
