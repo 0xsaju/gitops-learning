@@ -14,26 +14,6 @@ env:
   IMAGE_TAG: v1-amd64
 
 jobs:
-  test-workflow:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Debug Information
-        run: |
-          echo "Running initial test job"
-          echo "Current directory: $PWD"
-          echo "GitHub workspace: $GITHUB_WORKSPACE"
-          ls -la
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: List files after checkout
-        run: |
-          echo "Files in repository:"
-          ls -la
-          echo "Files in .github/workflows:"
-          ls -la .github/workflows || echo "Workflows directory not found"
-
   build-and-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -42,10 +22,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Repository contents
+      - name: Verify directory structure
         run: |
-          echo "Repository contents:"
-          ls -R
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
           
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -60,16 +41,18 @@ jobs:
       - name: Build and Push Docker image to ACR (linux/amd64)
         id: docker_build
         run: |
-          echo "Building from directory: $(pwd)"
-          echo "Contents of flask-hello-world:"
-          ls -la flask-hello-world/
+          if [ ! -f "Dockerfile" ]; then
+            echo "Error: Dockerfile not found in current directory"
+            pwd
+            ls -la
+            exit 1
+          fi
           
           docker buildx build \
             --platform linux/amd64 \
             -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             . \
             --push
-        working-directory: flask-hello-world
 
       - name: Deploy to Azure VM via SSH
         uses: appleboy/ssh-action@master
