@@ -1,0 +1,74 @@
+name: Build, Push to ACR, and Deploy to Azure VM
+
+on:
+  push:
+    branches:
+      - main # Trigger on pushes to the main branch
+
+env:
+  ACR_NAME: 0xsajuacr 
+  VM_HOST: 4.157.244.250
+  VM_USERNAME: sazzad 
+  IMAGE_NAME: flask-app
+  IMAGE_TAG: v1-amd64
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest # Use a fresh Ubuntu runner provided by GitHub
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ACR_NAME }}.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }} # This correctly pulls from GitHub Secret
+          password: ${{ secrets.ACR_PASSWORD }} # This correctly pulls from GitHub Secret
+
+      - name: Build and Push Docker image to ACR (linux/amd64)
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            . \
+            --push
+        working-directory: flask-hello-world # Adjust if your Dockerfile is not in the root
+
+      - name: Deploy to Azure VM via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # This correctly pulls from GitHub Secret
+          script: |
+            # Ensure Docker is logged in to ACR on the VM
+            # Note: ACR_USERNAME and ACR_PASSWORD here are also sourced from GitHub Secrets indirectly through the environment variables,
+            # or directly from secrets if you preferred. Using secrets.ACR_USERNAME here is robust.
+            sudo docker login ${{ env.ACR_NAME }}.azurecr.io \
+              --username "${{ secrets.ACR_USERNAME }}" \
+              --password "${{ secrets.ACR_PASSWORD }}"
+
+            # Stop and remove existing container if running
+            if [ "$(sudo docker ps -q -f name=${{ env.IMAGE_NAME }})" ]; then
+              echo "Stopping existing container..."
+              sudo docker stop ${{ env.IMAGE_NAME }}
+              echo "Removing existing container..."
+              sudo docker rm ${{ env.IMAGE_NAME }}
+            else
+              echo "No existing container named ${{ env.IMAGE_NAME }} found."
+            fi
+
+            # Pull the latest image
+            echo "Pulling latest image from ACR..."
+            sudo docker pull ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+            # Run the new container
+            echo "Running new container..."
+            sudo docker run -d -p 80:80 --name ${{ env.IMAGE_NAME }} ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+            echo "Deployment complete!"
