@@ -3,7 +3,8 @@ name: Build, Push to ACR, and Deploy to Azure VM
 on:
   push:
     branches:
-      - main # Trigger on pushes to the main branch
+      - main
+  workflow_dispatch:  # Add this to enable manual triggers
 
 env:
   ACR_NAME: 0xsajuacr 
