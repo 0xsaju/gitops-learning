@@ -27,6 +27,23 @@ async function connectDB() {
   )`);
 }
 
+async function connectDBWithRetry(retries = 10, delay = 3000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await connectDB();
+      console.log('Connected to DB');
+      return;
+    } catch (err) {
+      console.error(`DB connection failed (attempt ${i + 1}/${retries}):`, err.message);
+      if (i < retries - 1) {
+        await new Promise(res => setTimeout(res, delay));
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
 function generateToken(user) {
@@ -54,6 +71,7 @@ app.post('/api/register', async (req, res) => {
     await db.execute('INSERT INTO users (email, password) VALUES (?, ?)', [email, hashed]);
     res.status(201).json({ message: 'User registered' });
   } catch (err) {
+    console.error('Registration error:', err); // Log the error for debugging
     res.status(500).json({ message: 'Error registering user' });
   }
 });
@@ -86,7 +104,7 @@ app.get('/api/user', authMiddleware, async (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-connectDB().then(() => {
+connectDBWithRetry().then(() => {
   app.listen(process.env.PORT || 4000, () => {
     console.log('Backend running on port', process.env.PORT || 4000);
   });

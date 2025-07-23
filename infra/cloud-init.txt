@@ -2,15 +2,16 @@
 package_update: true
 packages:
   - docker.io
-  - docker-compose
 runcmd:
+  - curl -L "https://github.com/docker/compose/releases/download/v2.24.7/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  - chmod +x /usr/local/bin/docker-compose
   - usermod -aG docker azureuser
-  - systemctl enable docker
-  - systemctl start docker
-  - docker-compose -f /home/azureuser/docker-compose.yml up -d
+  - chown azureuser:azureuser /home/azureuser/docker-compose.yml
+  - su - azureuser -c "/usr/local/bin/docker-compose -f /home/azureuser/docker-compose.yml up -d"
 write_files:
   - path: /home/azureuser/docker-compose.yml
     permissions: '0644'
+    owner: azureuser:azureuser
     content: |
       version: '3.8'
       services:
@@ -27,6 +28,11 @@ write_files:
             - "3306:3306"
           volumes:
             - db_data:/var/lib/mysql
+          healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
 
         backend:
           image: 0xsaju/myapp-backend:latest
@@ -44,7 +50,8 @@ write_files:
           ports:
             - "4000:4000"
           depends_on:
-            - db
+            db:
+              condition: service_healthy
 
         frontend:
           image: 0xsaju/myapp-frontend:latest
