@@ -8,8 +8,9 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 
+const apiUrl = window.REACT_APP_API_URL || process.env.REACT_APP_API_URL || 'http://localhost:4000';
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:4000',
+  baseURL: apiUrl,
 });
 
 function App() {

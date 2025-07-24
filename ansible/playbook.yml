@@ -77,6 +77,13 @@
       vars:
         api_url: "http://{{ vm_ip.stdout }}:4000"
 
+    - name: Replace API URL in frontend config.js
+      lineinfile:
+        path: /home/azureuser/frontend/public/config.js
+        regexp: 'window.REACT_APP_API_URL = ".*";'
+        line: 'window.REACT_APP_API_URL = "http://{{ vm_ip.stdout }}:4000";'
+      become: false
+
     - name: Start Docker Compose stack
       shell: |
         /usr/local/bin/docker-compose -f /home/azureuser/docker-compose.yml up -d
