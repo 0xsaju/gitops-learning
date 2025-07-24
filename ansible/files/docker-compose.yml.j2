@@ -30,7 +30,7 @@ services:
       DB_NAME: appdb
       DB_PORT: 3306
       JWT_SECRET: supersecretkey
-      FRONTEND_URL: {{ api_url }}
+      FRONTEND_URL: http://{{ vm_ip.stdout }}:3000
       PORT: 4000
     ports:
       - "4000:4000"
