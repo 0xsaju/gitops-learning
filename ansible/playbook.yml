@@ -1,5 +1,5 @@
 ---
-- hosts: all
+- hosts: web
   become: yes
   vars:
     docker_compose_version: "2.24.7"
@@ -60,7 +60,6 @@
         /usr/local/bin/docker-compose -f /home/azureuser/docker-compose.yml up -d
       args:
         chdir: /home/azureuser
-      become_user: azureuser
 
     - name: Wait for frontend to be up
       uri:
