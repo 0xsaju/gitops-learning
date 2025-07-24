@@ -30,6 +30,12 @@
         state: present
         update_cache: yes
 
+    - name: Install MySQL client
+      apt:
+        name: mysql-client-core-8.0
+        state: present
+        update_cache: yes
+
     - name: Install pip3
       apt:
         name: python3-pip

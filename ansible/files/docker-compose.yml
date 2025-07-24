@@ -1,31 +1,12 @@
 version: '3.8'
 services:
-  db:
-    image: mysql:8.0
-    container_name: mysql_db
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: appdb
-      MYSQL_USER: appuser
-      MYSQL_PASSWORD: appPassword123!
-    ports:
-      - "3306:3306"
-    volumes:
-      - db_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   backend:
     image: 0xsaju/myapp-backend:latest
     container_name: backend_app
     restart: always
     environment:
-      DB_HOST: db
-      DB_USER: appuser
+      DB_HOST: myappmysql2024.mysql.database.azure.com
+      DB_USER: appuser@myappmysql2024
       DB_PASSWORD: appPassword123!
       DB_NAME: appdb
       DB_PORT: 3306
@@ -34,9 +15,6 @@ services:
       PORT: 4000
     ports:
       - "4000:4000"
-    depends_on:
-      db:
-        condition: service_healthy
 
   frontend:
     image: 0xsaju/myapp-frontend:latest
@@ -57,7 +35,4 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_POLL_INTERVAL=60
-
-volumes:
-  db_data: 
+      - WATCHTOWER_POLL_INTERVAL=60 
