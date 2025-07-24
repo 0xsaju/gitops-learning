@@ -4,6 +4,7 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const fs = require('fs');
 
 const app = express();
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
@@ -16,8 +17,7 @@ const dbConfig = {
   database: process.env.DB_NAME,
   port: process.env.DB_PORT || 3306,
   ssl: {
-    rejectUnauthorized: true,
-    ca: '/etc/ssl/certs/ca-certificates.crt'
+    ca: fs.readFileSync('/DigiCertGlobalRootCA.crt.pem')
   }
 };
 
