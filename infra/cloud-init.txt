@@ -16,11 +16,16 @@ runcmd:
   - usermod -aG docker azureuser
   # Ensure correct ownership of docker-compose.yml
   - chown azureuser:azureuser /home/azureuser/docker-compose.yml
+<<<<<<< HEAD
   # Run docker-compose as azureuser in a login shell to ensure group membership is active
   - |
       su - azureuser -c 'newgrp docker <<EOF
       /usr/local/bin/docker-compose -f /home/azureuser/docker-compose.yml up -d > /home/azureuser/docker-compose.log 2>&1
       EOF'
+=======
+  - sleep 20
+  - su - azureuser -c "/usr/local/bin/docker-compose -f /home/azureuser/docker-compose.yml up -d >> /home/azureuser/compose.log 2>&1"
+>>>>>>> 94baf52 (cloud-init updated)
 write_files:
   - path: /home/azureuser/docker-compose.yml
     permissions: '0644'
