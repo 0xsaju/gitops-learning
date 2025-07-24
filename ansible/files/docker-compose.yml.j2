@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  backend:
+    image: 0xsaju/myapp-backend:latest
+    container_name: backend_app
+    restart: always
+    environment:
+      DB_HOST: myappmysql2024.mysql.database.azure.com
+      DB_USER: appuser@myappmysql2024
+      DB_PASSWORD: appPassword123!
+      DB_NAME: appdb
+      DB_PORT: 3306
+      JWT_SECRET: supersecretkey
+      FRONTEND_URL: {{ api_url }}
+      PORT: 4000
+    ports:
+      - "4000:4000"
+    volumes:
+      - /home/azureuser/DigiCertGlobalRootCA.crt.pem:/DigiCertGlobalRootCA.crt.pem:ro
+
+  frontend:
+    image: 0xsaju/myapp-frontend:latest
+    container_name: frontend_app
+    restart: always
+    environment:
+      REACT_APP_API_URL: {{ api_url }}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=60 

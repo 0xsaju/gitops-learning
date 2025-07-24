@@ -61,13 +61,21 @@
         groups: docker
         append: yes
 
-    - name: Copy docker-compose.yml
-      copy:
-        src: files/docker-compose.yml
+    - name: Get VM public IP from Terraform
+      command: terraform -chdir=../infra output -raw vm_public_ip
+      register: vm_ip
+      delegate_to: localhost
+      become: false
+
+    - name: Template docker-compose.yml with dynamic API URL
+      template:
+        src: files/docker-compose.yml.j2
         dest: /home/azureuser/docker-compose.yml
         owner: azureuser
         group: azureuser
         mode: '0644'
+      vars:
+        api_url: "http://{{ vm_ip.stdout }}:4000"
 
     - name: Start Docker Compose stack
       shell: |
