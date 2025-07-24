@@ -1,0 +1,2 @@
+[web]
+<VM_PUBLIC_IP> ansible_user=azureuser 
