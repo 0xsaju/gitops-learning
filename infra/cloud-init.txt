@@ -2,26 +2,6 @@
 package_update: true
 packages:
   - docker.io
-runcmd:
-  # Ensure Docker is started and enabled
-  - systemctl enable docker
-  - systemctl start docker
-  # Install Docker Compose
-  - |
-      if [ ! -f /usr/local/bin/docker-compose ]; then
-        curl -L "https://github.com/docker/compose/releases/download/v2.24.7/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        chmod +x /usr/local/bin/docker-compose
-      fi
-  # Add azureuser to docker group (if not already)
-  - usermod -aG docker azureuser
-  # Ensure correct ownership of docker-compose.yml
-  - chown azureuser:azureuser /home/azureuser/docker-compose.yml
-  - sleep 20
-  # Run docker-compose as azureuser in a login shell to ensure group membership is active
-  - |
-      su - azureuser -c 'newgrp docker <<EOF
-      /usr/local/bin/docker-compose -f /home/azureuser/docker-compose.yml up -d >> /home/azureuser/compose.log 2>&1
-      EOF'
 write_files:
   - path: /home/azureuser/docker-compose.yml
     permissions: '0644'
@@ -89,4 +69,22 @@ write_files:
             - WATCHTOWER_POLL_INTERVAL=60
 
       volumes:
-        db_data: 
+        db_data:
+  - path: /home/azureuser/startup.sh
+    permissions: '0755'
+    owner: azureuser:azureuser
+    content: |
+      #!/bin/bash
+      sleep 30
+      /usr/local/bin/docker-compose -f /home/azureuser/docker-compose.yml up -d >> /home/azureuser/compose.log 2>&1
+runcmd:
+  - systemctl enable docker
+  - systemctl start docker
+  - |
+      if [ ! -f /usr/local/bin/docker-compose ]; then
+        curl -L "https://github.com/docker/compose/releases/download/v2.24.7/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
+      fi
+  - usermod -aG docker azureuser
+  - chown azureuser:azureuser /home/azureuser/docker-compose.yml
+  - nohup /home/azureuser/startup.sh & 
