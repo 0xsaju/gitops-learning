@@ -3,23 +3,28 @@
 ## System Architecture
 
 ```mermaid
-graph TD
-  User["User (You)"]
-  AWS["AWS EC2 Instance<br/>Ubuntu 22.04 LTS"]
-  Compose["Docker Compose"]
-  Backend["Backend<br/>0xsaju/myapp-backend"]
-  Frontend["Frontend<br/>0xsaju/myapp-frontend"]
-  MySQL["MySQL 8.0<br/>Container"]
-  Watchtower["Watchtower"]
+flowchart TD
+  User["User Browser"]
+  FE["Frontend (React)\n:3000"]
+  BE["Backend (Node.js/Express)\n:4000"]
+  SQL["MySQL (Container)\n:3306"]
+  WT["Watchtower (Auto-update)"]
+  GH["GitHub Actions"]
+  DH["Docker Hub"]
+  VM["AWS EC2 (Ubuntu 22.04)\nDocker + Docker Compose"]
 
-  User -->|SSH/Ansible| AWS
-  AWS --> Compose
-  Compose --> Backend
-  Compose --> Frontend
-  Compose --> MySQL
-  Compose --> Watchtower
-  Backend --> MySQL
-  Frontend --> Backend
+  User -- "HTTP" --> FE
+  FE -- "REST API" --> BE
+  BE -- "SQL" --> SQL
+
+  GH -- "Build & Push" --> DH
+  DH -- "docker pull" --> VM
+  VM -. "docker-compose up" .-> FE
+  VM -. "docker-compose up" .-> BE
+  VM -. "docker-compose up" .-> SQL
+  VM -. "docker-compose up" .-> WT
+  WT -- "Auto-pull new images" --> FE
+  WT -- "Auto-pull new images" --> BE
 ```
 
 ---
