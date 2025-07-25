@@ -1,3 +1,4 @@
+# NOTE: This file is for Azure deployments only. For AWS/EC2, the Ansible playbook uses docker-compose.yml.j2 as a template.
 version: '3.8'
 services:
   backend:

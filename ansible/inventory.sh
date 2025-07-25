@@ -6,7 +6,9 @@ if [[ "$1" == "--list" ]]; then
   "web": {
     "hosts": ["$IP"],
     "vars": {
-      "ansible_user": "azureuser"
+      "ansible_user": "ubuntu",
+      "ansible_ssh_pass": "Ubuntu2024!",
+      "ansible_ssh_common_args": "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     }
   }
 }

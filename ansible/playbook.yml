@@ -1,7 +1,8 @@
 ---
 - hosts: web
-  become: yes
+  become: true
   vars:
+    ansible_python_interpreter: /usr/bin/python3
     docker_compose_version: "2.24.7"
   tasks:
     - name: Install required apt packages
@@ -44,9 +45,9 @@
     - name: Download DigiCertGlobalRootCA.crt.pem
       get_url:
         url: https://dl.cacerts.digicert.com/DigiCertGlobalRootCA.crt.pem
-        dest: /home/azureuser/DigiCertGlobalRootCA.crt.pem
-        owner: azureuser
-        group: azureuser
+        dest: /home/ubuntu/DigiCertGlobalRootCA.crt.pem
+        owner: ubuntu
+        group: ubuntu
         mode: '0644'
 
     - name: Install Docker Compose
@@ -57,7 +58,7 @@
 
     - name: Add user to docker group
       user:
-        name: azureuser
+        name: ubuntu
         groups: docker
         append: yes
 
@@ -70,18 +71,18 @@
     - name: Template docker-compose.yml with dynamic API URL
       template:
         src: files/docker-compose.yml.j2
-        dest: /home/azureuser/docker-compose.yml
-        owner: azureuser
-        group: azureuser
+        dest: /home/ubuntu/docker-compose.yml
+        owner: ubuntu
+        group: ubuntu
         mode: '0644'
       vars:
         api_url: "http://{{ vm_ip.stdout }}:4000"
 
     - name: Start Docker Compose stack
       shell: |
-        /usr/local/bin/docker-compose -f /home/azureuser/docker-compose.yml up -d
+        /usr/local/bin/docker-compose -f /home/ubuntu/docker-compose.yml up -d
       args:
-        chdir: /home/azureuser
+        chdir: /home/ubuntu
 
     - name: Wait for frontend to be up
       uri:
