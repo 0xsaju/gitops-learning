@@ -73,7 +73,7 @@ ansible-playbook -i inventory.sh playbook.yml
   ```sh
   ssh ubuntu@<EC2_PUBLIC_IP>
   # or, if using password:
-  sshpass -p 'Ubuntu2024!' ssh ubuntu@<EC2_PUBLIC_IP>
+  sshpass -p 'password' ssh ubuntu@<EC2_PUBLIC_IP>
   ```
 
 ---
