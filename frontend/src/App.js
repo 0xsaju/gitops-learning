@@ -73,7 +73,7 @@ function App() {
       <Card sx={{ minWidth: 350, maxWidth: 400, p: 2, boxShadow: 3 }}>
         <CardContent>
           <Typography variant="h4" component="h1" align="center" gutterBottom fontWeight={700} color="primary">
-            0xsaju Login System
+            Login System
           </Typography>
           {user ? (
             <Box textAlign="center">
