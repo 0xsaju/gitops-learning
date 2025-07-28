@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# Production Services Monitoring Script
+# Environment: Production
+
+LOG_FILE="/home/ubuntu/logs/monitoring.log"
+ALERT_EMAIL="admin@example.com"
+
+# Create log directory if it doesn't exist
+mkdir -p /home/ubuntu/logs
+
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> $LOG_FILE
+}
+
+# Function to send alert
+send_alert() {
+    echo "Service Alert: $1" | mail -s "Production Service Alert" $ALERT_EMAIL
+    log_message "ALERT: $1"
+}
+
+# Check if services are running
+check_service() {
+    local service_name=$1
+    local port=$2
+    local endpoint=$3
+    
+    # Check if container is running
+    if ! docker ps | grep -q "$service_name"; then
+        send_alert "Container $service_name is not running"
+        return 1
+    fi
+    
+    # Check if service is responding
+    if ! curl -f -s "http://localhost:$port$endpoint" > /dev/null; then
+        send_alert "Service $service_name is not responding on port $port"
+        return 1
+    fi
+    
+    log_message "Service $service_name is healthy"
+    return 0
+}
+
+# Check disk space
+check_disk_space() {
+    local usage=$(df / | awk 'NR==2 {print $5}' | sed 's/%//')
+    if [ $usage -gt 80 ]; then
+        send_alert "Disk usage is high: ${usage}%"
+    fi
+}
+
+# Check memory usage
+check_memory() {
+    local usage=$(free | awk 'NR==2{printf "%.0f", $3*100/$2}')
+    if [ $usage -gt 80 ]; then
+        send_alert "Memory usage is high: ${usage}%"
+    fi
+}
+
+# Main monitoring logic
+log_message "Starting service monitoring"
+
+# Check all services
+check_service "production_frontend_app" "8080" "/"
+check_service "production_user_service" "5001" "/api/users"
+check_service "production_product_service" "5002" "/api/products"
+check_service "production_order_service" "5003" "/api/orders"
+
+# Check system resources
+check_disk_space
+check_memory
+
+# Check database connectivity
+if ! docker exec production_user_dbase mysql -u dbuser -ptestpass123 -e "SELECT 1;" > /dev/null 2>&1; then
+    send_alert "User database connectivity issue"
+fi
+
+if ! docker exec production_product_dbase mysql -u dbuser -ptestpass123 -e "SELECT 1;" > /dev/null 2>&1; then
+    send_alert "Product database connectivity issue"
+fi
+
+if ! docker exec production_order_dbase mysql -u dbuser -ptestpass123 -e "SELECT 1;" > /dev/null 2>&1; then
+    send_alert "Order database connectivity issue"
+fi
+
+log_message "Service monitoring completed" 

@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  user-api:
+    container_name: staging_user_service
+    image: 0xsaju/flask-user-service:staging
+    ports:
+      - "5001:5001"
+    environment:
+      - CONFIGURATION_SETUP=config.ProductionConfig
+      - DB_HOST=user-db
+      - DB_PORT=3306
+      - DB_USER=dbuser
+      - DB_PASSWORD=testpass123
+      - DB_NAME=user_management
+    depends_on:
+      - user-db
+    networks:
+      - staging_network
+    restart: always
+
+  user-db:
+    container_name: staging_user_dbase
+    image: mysql:8
+    ports:
+      - "32000:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: R00tD$bP@ssW0rd
+      MYSQL_DATABASE: user_management
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: testpass123
+    networks:
+      - staging_network
+    volumes:
+      - staging_userdb_vol:/var/lib/mysql
+
+  product-api:
+    container_name: staging_product_service
+    image: 0xsaju/flask-product-service:staging
+    ports:
+      - "5002:5002"
+    environment:
+      - CONFIGURATION_SETUP=config.ProductionConfig
+      - DB_HOST=product-db
+      - DB_PORT=3306
+      - DB_USER=dbuser
+      - DB_PASSWORD=testpass123
+      - DB_NAME=product_catalog
+    depends_on:
+      - product-db
+    networks:
+      - staging_network
+    restart: always
+
+  product-db:
+    container_name: staging_product_dbase
+    image: mysql:8
+    ports:
+      - "32001:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: R00tD$bP@ssW0rd
+      MYSQL_DATABASE: product_catalog
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: testpass123
+    networks:
+      - staging_network
+    volumes:
+      - staging_productdb_vol:/var/lib/mysql
+
+  order-api:
+    container_name: staging_order_service
+    image: 0xsaju/flask-order-service:staging
+    ports:
+      - "5003:5003"
+    environment:
+      - CONFIGURATION_SETUP=config.ProductionConfig
+      - DB_HOST=order-db
+      - DB_PORT=3306
+      - DB_USER=dbuser
+      - DB_PASSWORD=testpass123
+      - DB_NAME=order_management
+    depends_on:
+      - order-db
+    networks:
+      - staging_network
+    restart: always
+
+  order-db:
+    container_name: staging_order_dbase
+    image: mysql:8
+    ports:
+      - "32002:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: R00tD$bP@ssW0rd
+      MYSQL_DATABASE: order_management
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: testpass123
+    networks:
+      - staging_network
+    volumes:
+      - staging_orderdb_vol:/var/lib/mysql
+
+  frontend-app:
+    container_name: staging_frontend_app
+    image: 0xsaju/flask-frontend:staging
+    ports:
+      - "8080:5000"
+    environment:
+      - CONFIGURATION_SETUP=config.ProductionConfig
+      - USER_SERVICE_URL=http://user-api:5001
+      - PRODUCT_SERVICE_URL=http://product-api:5002
+      - ORDER_SERVICE_URL=http://order-api:5003
+    networks:
+      - staging_network
+    restart: always
+
+  watchtower:
+    container_name: staging_watchtower
+    image: containrrr/watchtower
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=30
+      - WATCHTOWER_CLEANUP=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - staging_network
+    restart: always
+
+volumes:
+  staging_userdb_vol:
+  staging_productdb_vol:
+  staging_orderdb_vol:
+
+networks:
+  staging_network:
+    driver: bridge 

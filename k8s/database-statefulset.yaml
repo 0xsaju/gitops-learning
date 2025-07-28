@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: user-db
+spec:
+  serviceName: "user-db"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-db
+  template:
+    metadata:
+      labels:
+        app: user-db
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "R00tD$bP@ssW0rd"
+        - name: MYSQL_DATABASE
+          value: "user_management"
+        - name: MYSQL_USER
+          value: "dbuser"
+        - name: MYSQL_PASSWORD
+          value: "D$bP@ssW0rd"
+        volumeMounts:
+        - name: user-db-storage
+          mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: user-db-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-db
+spec:
+  selector:
+    app: user-db
+  ports:
+  - port: 3306
+    targetPort: 3306
+  clusterIP: None 

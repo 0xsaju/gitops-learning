@@ -1,0 +1,2 @@
+[staging]
+staging-server ansible_host={{ staging_ip }} ansible_user=ubuntu ansible_ssh_pass=Ubuntu2024! ansible_become_pass=Ubuntu2024! 

@@ -1,0 +1,37 @@
+# docker-compose.yml
+version: '3.8'
+volumes:
+  orderdb_vol:
+
+networks:
+  micro_network:
+    external:
+      name: micro_network
+
+services:
+  order-api:
+    container_name: corder-service
+    build:
+      context: .
+    ports:
+    - "5003:5003"
+    depends_on:
+      - order-db
+    networks:
+      - micro_network
+    restart: always
+
+  order-db:
+    container_name: corder_dbase
+    image: mysql:8
+    ports:
+    - "32002:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: R00tD$bP@ssW0rd
+      MYSQL_DATABASE: order_management
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: D$bP@ssW0rd
+    networks:
+      - micro_network
+    volumes:
+    - orderdb_vol:/var/lib/mysql

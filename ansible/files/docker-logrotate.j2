@@ -1,0 +1,15 @@
+/home/ubuntu/production-app/logs/*.log {
+    daily
+    missingok
+    rotate 30
+    compress
+    delaycompress
+    notifempty
+    create 644 ubuntu ubuntu
+    postrotate
+        docker exec production_frontend_app kill -USR1 1
+        docker exec production_user_service kill -USR1 1
+        docker exec production_product_service kill -USR1 1
+        docker exec production_order_service kill -USR1 1
+    endscript
+} 

@@ -1,8 +1,8 @@
 # Dockerfile
 FROM python:3.7
-COPY requirements.txt /frontendapp/requirements.txt
-WORKDIR /frontendapp
+COPY requirements.txt /productapp/requirements.txt
+WORKDIR /productapp
 RUN pip install -r requirements.txt
-COPY . /frontendapp
+COPY . /productapp
 ENTRYPOINT ["python"]
 CMD ["run.py"]

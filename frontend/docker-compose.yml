@@ -1,3 +1,4 @@
+# docker-compose.yml
 version: '3.8'
 
 volumes:
@@ -7,17 +8,15 @@ volumes:
 
 networks:
   micro_network:
-    driver: bridge
+    name: micro_network
 
 services:
   user-api:
     container_name: cuser-service
     build:
-      context: ./user-service
+      context: ../user-service
     ports:
     - "5001:5001"
-    environment:
-      - CONFIGURATION_SETUP=config.ProductionConfig
     depends_on:
       - user-db
     networks:
@@ -33,7 +32,7 @@ services:
       MYSQL_ROOT_PASSWORD: R00tD$bP@ssW0rd
       MYSQL_DATABASE: user_management
       MYSQL_USER: dbuser
-      MYSQL_PASSWORD: testpass123
+      MYSQL_PASSWORD: D$bP@ssW0rd
     networks:
       - micro_network
     volumes:
@@ -42,11 +41,9 @@ services:
   product-api:
     container_name: cproduct-service
     build:
-      context: ./product-service
+      context: ../product-service
     ports:
     - "5002:5002"
-    environment:
-      - CONFIGURATION_SETUP=config.ProductionConfig
     depends_on:
       - product-db
     networks:
@@ -62,7 +59,7 @@ services:
       MYSQL_ROOT_PASSWORD: R00tD$bP@ssW0rd
       MYSQL_DATABASE: product_catalog
       MYSQL_USER: dbuser
-      MYSQL_PASSWORD: testpass123
+      MYSQL_PASSWORD: D$bP@ssW0rd
     networks:
       - micro_network
     volumes:
@@ -71,11 +68,9 @@ services:
   order-api:
     container_name: corder-service
     build:
-      context: ./order-service
+      context: ../order-service
     ports:
     - "5003:5003"
-    environment:
-      - CONFIGURATION_SETUP=config.ProductionConfig
     depends_on:
       - order-db
     networks:
@@ -91,7 +86,7 @@ services:
       MYSQL_ROOT_PASSWORD: R00tD$bP@ssW0rd
       MYSQL_DATABASE: order_management
       MYSQL_USER: dbuser
-      MYSQL_PASSWORD: testpass123
+      MYSQL_PASSWORD: D$bP@ssW0rd
     networks:
       - micro_network
     volumes:
@@ -100,11 +95,9 @@ services:
   frontend-app:
     container_name: cfrontend-app
     build:
-      context: ./frontend
+      context: .
     ports:
     - "8080:5000"
-    environment:
-      - CONFIGURATION_SETUP=config.ProductionConfig
     networks:
       - micro_network
-    restart: always 
+    restart: always

@@ -1,0 +1,150 @@
+---
+- hosts: staging
+  become: true
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    docker_compose_version: "2.24.7"
+  tasks:
+    - name: Install required apt packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - git
+        state: present
+        update_cache: yes
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Install MySQL client
+      apt:
+        name: mysql-client-core-8.0
+        state: present
+        update_cache: yes
+
+    - name: Install pip3
+      apt:
+        name: python3-pip
+        state: present
+
+    - name: Install Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/v{{ docker_compose_version }}/docker-compose-{{ ansible_system | lower }}-{{ ansible_architecture }}"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Add user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    - name: Create staging application directory
+      file:
+        path: /home/ubuntu/staging-app
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Get VM public IP from Terraform
+      command: terraform -chdir=../infra output -raw staging_vm_public_ip
+      register: staging_vm_ip
+      delegate_to: localhost
+      become: false
+
+    - name: Template staging docker-compose.yml
+      template:
+        src: files/staging-docker-compose.yml.j2
+        dest: /home/ubuntu/staging-app/docker-compose.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      vars:
+        staging_ip: "{{ staging_vm_ip.stdout }}"
+
+    - name: Create staging environment file
+      template:
+        src: files/staging.env.j2
+        dest: /home/ubuntu/staging-app/.env
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      vars:
+        staging_ip: "{{ staging_vm_ip.stdout }}"
+
+    - name: Pull latest Docker images
+      shell: |
+        docker pull 0xsaju/flask-user-service:staging
+        docker pull 0xsaju/flask-product-service:staging
+        docker pull 0xsaju/flask-order-service:staging
+        docker pull 0xsaju/flask-frontend:staging
+      args:
+        chdir: /home/ubuntu/staging-app
+
+    - name: Start Staging Docker Compose stack
+      shell: |
+        /usr/local/bin/docker-compose -f /home/ubuntu/staging-app/docker-compose.yml up -d
+      args:
+        chdir: /home/ubuntu/staging-app
+
+    - name: Wait for staging frontend to be up
+      uri:
+        url: http://localhost:8080
+        status_code: 200
+      register: staging_frontend_status
+      retries: 15
+      delay: 10
+      until: staging_frontend_status.status == 200
+
+    - name: Wait for staging user service to be up
+      uri:
+        url: http://localhost:5001/api/users
+        status_code: 200
+      register: staging_user_status
+      retries: 15
+      delay: 10
+      until: staging_user_status.status == 200
+
+    - name: Wait for staging product service to be up
+      uri:
+        url: http://localhost:5002/api/products
+        status_code: 200
+      register: staging_product_status
+      retries: 15
+      delay: 10
+      until: staging_product_status.status == 200
+
+    - name: Wait for staging order service to be up
+      uri:
+        url: http://localhost:5003/api/orders
+        status_code: 200
+      register: staging_order_status
+      retries: 15
+      delay: 10
+      until: staging_order_status.status == 200
+
+    - name: Display staging deployment info
+      debug:
+        msg: |
+          Staging deployment completed successfully!
+          Frontend: http://{{ staging_vm_ip.stdout }}:8080
+          User Service: http://{{ staging_vm_ip.stdout }}:5001
+          Product Service: http://{{ staging_vm_ip.stdout }}:5002
+          Order Service: http://{{ staging_vm_ip.stdout }}:5003 
