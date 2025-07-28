@@ -123,7 +123,16 @@ jobs:
         id: get-ip
         run: |
           cd infra
+          echo "Available Terraform outputs:"
+          terraform output
+          echo ""
+          echo "Getting instance public IP..."
           SERVER_IP=$(terraform output -raw instance_public_ip)
+          echo "Server IP: $SERVER_IP"
+          if [ -z "$SERVER_IP" ]; then
+            echo "Error: Server IP is empty!"
+            exit 1
+          fi
           echo "server_ip=$SERVER_IP" >> $GITHUB_OUTPUT
 
   deploy-application:
@@ -170,21 +179,34 @@ jobs:
       - name: Health check
         run: |
           SERVER_IP="${{ needs.deploy-infrastructure.outputs.server_ip }}"
-          echo "Testing ${{ steps.env.outputs.environment }} deployment..."
+          echo "Server IP from previous job: $SERVER_IP"
+          
+          if [ -z "$SERVER_IP" ]; then
+            echo "Error: SERVER_IP is empty! Cannot perform health checks."
+            echo "This might indicate a problem with the Terraform deployment."
+            exit 1
+          fi
+          
+          echo "Testing ${{ steps.env.outputs.environment }} deployment on $SERVER_IP..."
           
           # Wait for services to be ready
+          echo "Waiting 60 seconds for services to start..."
           sleep 60
           
           # Test frontend
+          echo "Testing frontend on http://$SERVER_IP:8080"
           curl -f http://$SERVER_IP:8080 || exit 1
           
           # Test user service
+          echo "Testing user service on http://$SERVER_IP:5001/api/users"
           curl -f http://$SERVER_IP:5001/api/users || exit 1
           
           # Test product service
+          echo "Testing product service on http://$SERVER_IP:5002/api/products"
           curl -f http://$SERVER_IP:5002/api/products || exit 1
           
           # Test order service
+          echo "Testing order service on http://$SERVER_IP:5003/api/orders"
           curl -f http://$SERVER_IP:5003/api/orders || exit 1
           
           echo "All ${{ steps.env.outputs.environment }} services are healthy!"
