@@ -22,14 +22,13 @@
 
     - name: Additional apt cleanup
       shell: |
-        timeout 10 sudo fuser -cuk /var/lib/dpkg/lock-frontend || true
-        timeout 10 sudo fuser -cuk /var/lib/apt/lists/lock || true
-        timeout 10 sudo fuser -cuk /var/cache/apt/archives/lock || true
+        # Only remove lock files, don't kill processes
         sudo rm -f /var/lib/dpkg/lock-frontend
         sudo rm -f /var/lib/apt/lists/lock-frontend
         sudo rm -f /var/lib/apt/lists/lock
         sudo rm -f /var/cache/apt/archives/lock
         sudo rm -f /var/lib/dpkg/lock*
+        sudo dpkg --configure -a
       ignore_errors: yes
 
     - name: Install required apt packages
