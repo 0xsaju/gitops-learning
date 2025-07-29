@@ -128,7 +128,7 @@ jobs:
           terraform state list
           echo ""
           echo "Refreshing Terraform state to get latest outputs..."
-          terraform refresh -var-file="${{ steps.env.outputs.environment }}.tfvars"
+          terraform refresh -var-file="environments/${{ steps.env.outputs.environment }}.tfvars"
           echo ""
           echo "Checking for required outputs..."
           terraform output instance_public_ip || echo "Warning: instance_public_ip output not found"
