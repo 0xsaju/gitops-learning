@@ -1,2 +1,2 @@
 [staging]
-staging-server ansible_host={{ staging_ip }} ansible_user=ubuntu ansible_ssh_pass=Ubuntu2024! ansible_become_pass=Ubuntu2024! ansible_ssh_common_args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no' 
+staging-server ansible_host={{ staging_ip }} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/gitops-key ansible_ssh_common_args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no' 

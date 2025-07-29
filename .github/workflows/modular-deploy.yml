@@ -168,7 +168,16 @@ jobs:
       - name: Setup Ansible and SSH Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ansible sshpass
+          sudo apt-get install -y ansible
+          
+          # Setup SSH key
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/gitops-key
+          chmod 600 ~/.ssh/gitops-key
+          
+          # Add key to SSH agent
+          eval $(ssh-agent -s)
+          ssh-add ~/.ssh/gitops-key
 
       - name: Determine environment
         id: env
@@ -207,8 +216,8 @@ jobs:
           Host ${{ needs.deploy-infrastructure.outputs.server_ip }}
             HostName ${{ needs.deploy-infrastructure.outputs.server_ip }}
             User ubuntu
-            PubkeyAuthentication no
-            PasswordAuthentication yes
+            PubkeyAuthentication yes
+            PasswordAuthentication no
             PreferredAuthentications password
             StrictHostKeyChecking no
             ConnectTimeout 10
@@ -220,10 +229,10 @@ jobs:
           chmod 600 ~/.ssh/config
           
           # Test SSH with explicit flags and better error handling
-          echo "Attempting SSH connection with password authentication..."
+          echo "Attempting SSH connection with key authentication..."
           for i in {1..6}; do
             echo "Attempt $i of 6..."
-            if timeout 30 sshpass -p "Ubuntu2024!" ssh -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'SSH connection successful' && exit 0"; then
+            if timeout 30 ssh -i ~/.ssh/gitops-key -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'SSH connection successful' && exit 0"; then
               echo "✅ SSH connection successful!"
               break
             else
@@ -233,10 +242,10 @@ jobs:
           done
           
           # Final test
-          if ! timeout 30 sshpass -p "Ubuntu2024!" ssh -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'Final SSH test successful'"; then
+          if ! timeout 30 ssh -i ~/.ssh/gitops-key -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'Final SSH test successful'"; then
             echo "❌ SSH connection failed after all attempts"
             echo "Debugging SSH configuration..."
-            sshpass -p "Ubuntu2024!" ssh -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -v ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'Debug test'" || true
+            ssh -i ~/.ssh/gitops-key -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -v ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'Debug test'" || true
             exit 1
           fi
           
@@ -251,8 +260,8 @@ jobs:
           Host ${{ needs.deploy-infrastructure.outputs.server_ip }}
             HostName ${{ needs.deploy-infrastructure.outputs.server_ip }}
             User ubuntu
-            PubkeyAuthentication no
-            PasswordAuthentication yes
+            PubkeyAuthentication yes
+            PasswordAuthentication no
             PreferredAuthentications password
             StrictHostKeyChecking no
             ConnectTimeout 10
@@ -263,7 +272,7 @@ jobs:
           EOF
           chmod 600 ~/.ssh/config
           
-          ansible-playbook -i "staging-inventory-dynamic" "staging-playbook.yml" --extra-vars "staging_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no'
+          ansible-playbook -i "staging-inventory-dynamic" "staging-playbook.yml" --extra-vars "staging_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no'
 
   health-check:
     needs: deploy-application

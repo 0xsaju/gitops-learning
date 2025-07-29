@@ -27,40 +27,36 @@ apt-get install -y \
 echo "ubuntu:${password}" | chpasswd
 echo "Password set for ubuntu user at $(date)"
 
-# Configure SSH for password authentication
-echo "Configuring SSH for password authentication..."
+# Configure SSH for key-based authentication
+echo "Configuring SSH for key-based authentication..."
 
-# Enable password authentication (this was missing!)
-sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+# Enable public key authentication
+sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/^#*AuthorizedKeysFile.*/AuthorizedKeysFile .ssh\/authorized_keys/' /etc/ssh/sshd_config
 
-# Disable public key authentication to force password auth
-sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication no/' /etc/ssh/sshd_config
-
-# Disable authorized keys file
-sed -i 's/^#*AuthorizedKeysFile.*/AuthorizedKeysFile \/dev\/null/' /etc/ssh/sshd_config
-
-# Ensure root login is disabled
+# Disable password authentication for security
+sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
 sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
 
-# Remove any existing authorized_keys to force password auth
-rm -f /home/ubuntu/.ssh/authorized_keys
-rm -rf /home/ubuntu/.ssh
+# Ensure SSH directory exists
+mkdir -p /home/ubuntu/.ssh
 
 echo "SSH configuration updated at $(date)"
+echo "Current SSH config:"
+grep -E "(PasswordAuthentication|PubkeyAuthentication|AuthorizedKeysFile)" /etc/ssh/sshd_config || echo "No SSH config found"
 
-# Setup SSH key if provided (and re-enable pubkey auth)
+# Setup SSH key if provided
 if [ -n "${ssh_key}" ] && [ "${ssh_key}" != "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC3EXAMPLEKEYHERE user@host" ]; then
     echo "Setting up SSH key..."
-    mkdir -p /home/ubuntu/.ssh
     echo "${ssh_key}" >> /home/ubuntu/.ssh/authorized_keys
     chown -R ubuntu:ubuntu /home/ubuntu/.ssh
     chmod 700 /home/ubuntu/.ssh
     chmod 600 /home/ubuntu/.ssh/authorized_keys
-    
-    # Re-enable pubkey auth if key is provided
-    sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
-    sed -i 's/^#*AuthorizedKeysFile.*/AuthorizedKeysFile .ssh\/authorized_keys/' /etc/ssh/sshd_config
     echo "SSH key configured at $(date)"
+    echo "SSH key fingerprint:"
+    ssh-keygen -lf /home/ubuntu/.ssh/authorized_keys || echo "Could not get fingerprint"
+else
+    echo "No valid SSH key provided, using default configuration"
 fi
 
 # Install Docker
