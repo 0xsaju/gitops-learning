@@ -1,6 +1,8 @@
 ---
 - hosts: staging
-  become: true
+  become: yes
+  become_method: sudo
+  become_user: root
   vars:
     ansible_python_interpreter: /usr/bin/python3
     docker_compose_version: "2.24.7"
@@ -65,6 +67,17 @@
         state: present
         update_cache: no
       become: yes
+
+    - name: Force cleanup before pip3
+      shell: |
+        sudo rm -f /var/lib/dpkg/lock-frontend
+        sudo rm -f /var/lib/apt/lists/lock-frontend
+        sudo rm -f /var/lib/apt/lists/lock
+        sudo rm -f /var/cache/apt/archives/lock
+        sudo rm -f /var/lib/dpkg/lock*
+        sudo dpkg --configure -a
+        sudo apt-get clean
+      ignore_errors: yes
 
     - name: Install pip3
       apt:
