@@ -89,6 +89,6 @@
         url: http://localhost:3000
         status_code: 200
       register: frontend_status
-      retries: 10
+      retries: 3
       delay: 5
       until: frontend_status.status == 200 
