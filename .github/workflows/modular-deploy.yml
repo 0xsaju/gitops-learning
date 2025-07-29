@@ -218,13 +218,15 @@ jobs:
             User ubuntu
             PubkeyAuthentication yes
             PasswordAuthentication no
-            PreferredAuthentications password
+            PreferredAuthentications publickey
             StrictHostKeyChecking no
-            ConnectTimeout 10
+            ConnectTimeout 60
             IdentitiesOnly yes
-            IdentityFile /dev/null
+            IdentityFile ~/.ssh/gitops-key
             KbdInteractiveAuthentication no
             GSSAPIAuthentication no
+            ServerAliveInterval 60
+            ServerAliveCountMax 3
           EOF
           chmod 600 ~/.ssh/config
           
@@ -269,13 +271,15 @@ jobs:
             User ubuntu
             PubkeyAuthentication yes
             PasswordAuthentication no
-            PreferredAuthentications password
+            PreferredAuthentications publickey
             StrictHostKeyChecking no
-            ConnectTimeout 10
+            ConnectTimeout 60
             IdentitiesOnly yes
-            IdentityFile /dev/null
+            IdentityFile ~/.ssh/gitops-key
             KbdInteractiveAuthentication no
             GSSAPIAuthentication no
+            ServerAliveInterval 60
+            ServerAliveCountMax 3
           EOF
           chmod 600 ~/.ssh/config
           
