@@ -36,6 +36,7 @@ resource "aws_instance" "main" {
     environment = var.environment
     ssh_key     = var.ssh_public_key
     password    = var.instance_password
+    timestamp   = timestamp()
   }))
 
   tags = merge(var.common_tags, {
@@ -44,11 +45,6 @@ resource "aws_instance" "main" {
 
   lifecycle {
     create_before_destroy = true
-    # Ignore changes to user_data to prevent unnecessary replacements
-    ignore_changes = [
-      user_data_base64,
-      user_data
-    ]
   }
 }
 

@@ -45,19 +45,15 @@ echo "SSH configuration updated at $(date)"
 echo "Current SSH config:"
 grep -E "(PasswordAuthentication|PubkeyAuthentication|AuthorizedKeysFile)" /etc/ssh/sshd_config || echo "No SSH config found"
 
-# Setup SSH key if provided
-if [ -n "${ssh_key}" ] && [ "${ssh_key}" != "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC3EXAMPLEKEYHERE user@host" ]; then
-    echo "Setting up SSH key..."
-    echo "${ssh_key}" >> /home/ubuntu/.ssh/authorized_keys
-    chown -R ubuntu:ubuntu /home/ubuntu/.ssh
-    chmod 700 /home/ubuntu/.ssh
-    chmod 600 /home/ubuntu/.ssh/authorized_keys
-    echo "SSH key configured at $(date)"
-    echo "SSH key fingerprint:"
-    ssh-keygen -lf /home/ubuntu/.ssh/authorized_keys || echo "Could not get fingerprint"
-else
-    echo "No valid SSH key provided, using default configuration"
-fi
+# Setup SSH key
+echo "Setting up SSH key for key-based authentication..."
+cat > /home/ubuntu/.ssh/authorized_keys << 'SSHKEY'
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQD4r4uE1Crhd7+qbBzy/l9eSbQqi/5R6KKeJNzNETvbZqsyqjgNhcS6J7V58CWHImm+OpUFL6gTd0Q+pXXv23Rn7LujFxDBAXxFW8rR8N7osvX0jkReRQgCEijT7gcgkoy0gmrkB/DSyKFnThVnzhDPaqrSHoZX8ixnvNjDd5yJ+o4dROaT9+jLeiBcyjogob3DK66H/4xO8yQrrEmw6v1j5iu+H8vk63wYKKEhRD8TfOu4K27FfYTN53wCB5mDOJhXJniSxHIXLGzsKMnoXRZJsspgDzRR/QdQQrz2Vfb2UICo0rnFgnsSRcjg+vPLi2YcmZ7h5ZaMvf5ww9KTI7c9hiEigbe1ptqSQg7OqbjYcn0H+WI4Tkr9qKapkxYLWsHVd9NP/56RVpdf3kP4MJauU1oiRaXCq51rxDz4xTTshWjW60fej6yg7hP0ZQ9yLQaNaLIgpiYuBXJf4psMRCIvyebxLQPfQWXVrJMM/PHJwZ2qNgO9u5Ijv0tszKjT426BuAGhr01an4i76qI2/M0eDi+j6GXDF50naU+5HzMDPnR6OKMr6kC4zVVHEEDAM8c5HQLgbupvnW4dMcDhET5LIk2ad2J3405vDwSDoVxw2oWz31nMfX9jl1tWjKzricXytk4JWAQgQ6MAlikbR2ZDb+O+A1n1pEJrI497G9sIrw== gitops-learning@20250729
+SSHKEY
+chown -R ubuntu:ubuntu /home/ubuntu/.ssh
+chmod 700 /home/ubuntu/.ssh
+chmod 600 /home/ubuntu/.ssh/authorized_keys
+echo "SSH key configured at $(date)"
 
 # Install Docker
 echo "Installing Docker..."

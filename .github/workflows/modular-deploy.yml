@@ -230,9 +230,16 @@ jobs:
           
           # Test SSH with explicit flags and better error handling
           echo "Attempting SSH connection with key authentication..."
+          
+          # First, let's test if the key file exists and has correct permissions
+          echo "Checking SSH key file..."
+          ls -la ~/.ssh/gitops-key
+          echo "SSH key fingerprint:"
+          ssh-keygen -lf ~/.ssh/gitops-key || echo "Could not get fingerprint"
+          
           for i in {1..6}; do
             echo "Attempt $i of 6..."
-            if timeout 60 ssh -i ~/.ssh/gitops-key -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -o ConnectTimeout=60 -o ServerAliveInterval=60 -o ServerAliveCountMax=3 ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'SSH connection successful' && exit 0"; then
+            if timeout 60 ssh -i ~/.ssh/gitops-key -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -o ConnectTimeout=60 -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -v ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'SSH connection successful' && exit 0" 2>&1; then
               echo "✅ SSH connection successful!"
               break
             else
