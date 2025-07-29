@@ -9,23 +9,19 @@
     # staging_ip: "YOUR_STAGING_IP_HERE" # Define this if not passed via extra vars or inventory
 
   tasks:
-    - name: Kill any existing apt processes and clean up locks
+    - name: Clean apt cache and remove lock files
       ansible.builtin.shell: |
-        killall apt apt-get || true # No sudo needed, as become:yes is active
         rm -f /var/lib/apt/lists/lock
         rm -f /var/cache/apt/archives/lock
         rm -f /var/lib/dpkg/lock*
         rm -f /var/lib/dpkg/lock-frontend
         rm -f /var/lib/apt/lists/lock-frontend
         dpkg --configure -a
-        apt-get clean # Add apt-get clean here for better cleanup
-      args:
-        warn: false # Suppress warnings about explicit sudo if it was used
       ignore_errors: yes
 
-    - name: Wait a moment for apt to settle
+    - name: Wait for apt to settle
       ansible.builtin.pause:
-        seconds: 10
+        seconds: 5
 
     - name: Update apt cache and install required packages
       ansible.builtin.apt:
@@ -36,7 +32,9 @@
           - software-properties-common
           - git
         state: present
-        update_cache: yes # Update cache here to ensure latest info
+        update_cache: yes
+        lock_timeout: 120
+        clean: yes
 
     - name: Add Docker GPG key
       ansible.builtin.apt_key:
@@ -47,22 +45,25 @@
       ansible.builtin.apt_repository:
         repo: "deb [arch={{ ansible_architecture }}] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
-        update_cache: yes # Update cache after adding new repo
+        update_cache: yes
 
     - name: Install Docker
       ansible.builtin.apt:
         name: docker.io
         state: present
+        lock_timeout: 120
 
     - name: Install MySQL client
       ansible.builtin.apt:
         name: mysql-client-core-8.0
         state: present
+        lock_timeout: 120
 
     - name: Install pip3
       ansible.builtin.apt:
         name: python3-pip
         state: present
+        lock_timeout: 120
 
     - name: Install Docker Compose
       ansible.builtin.get_url:
@@ -112,14 +113,14 @@
         docker pull 0xsaju/flask-frontend:staging
       args:
         chdir: /home/ubuntu/staging-app
-      become: no # Run as the ubuntu user (who is now in docker group)
+      become: no
 
     - name: Start Staging Docker Compose stack
       ansible.builtin.shell: |
         /usr/local/bin/docker-compose -f /home/ubuntu/staging-app/docker-compose.yml up -d
       args:
         chdir: /home/ubuntu/staging-app
-      become: no # Run as the ubuntu user
+      become: no
 
     - name: Wait for Docker services to start
       ansible.builtin.shell: |
@@ -129,7 +130,7 @@
       args:
         chdir: /home/ubuntu/staging-app
       register: docker_status
-      become: no # Run as the ubuntu user
+      become: no
 
     - name: Display Docker status
       ansible.builtin.debug:
