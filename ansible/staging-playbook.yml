@@ -5,6 +5,15 @@
     ansible_python_interpreter: /usr/bin/python3
     docker_compose_version: "2.24.7"
   tasks:
+    - name: Kill any existing apt processes
+      shell: |
+        sudo killall apt apt-get || true
+        sudo rm -f /var/lib/apt/lists/lock
+        sudo rm -f /var/cache/apt/archives/lock
+        sudo rm -f /var/lib/dpkg/lock*
+        sudo dpkg --configure -a
+      ignore_errors: yes
+
     - name: Install required apt packages
       apt:
         name:
