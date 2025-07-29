@@ -107,7 +107,7 @@ jobs:
       - name: Terraform Init
         run: |
           cd infra
-          terraform init
+          terraform init -backend-config="bucket=gitops-learning-terraform-state-1753704333" -backend-config="key=terraform.tfstate" -backend-config="region=ap-southeast-1" -backend-config="dynamodb_table=terraform-state-lock" -backend-config="encrypt=true"
 
       - name: Terraform Plan
         run: |
