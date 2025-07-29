@@ -127,6 +127,9 @@ jobs:
           echo "Validating Terraform state after apply..."
           terraform state list
           echo ""
+          echo "Refreshing Terraform state to get latest outputs..."
+          terraform refresh
+          echo ""
           echo "Checking for required outputs..."
           terraform output instance_public_ip || echo "Warning: instance_public_ip output not found"
           terraform output instance_id || echo "Warning: instance_id output not found"
