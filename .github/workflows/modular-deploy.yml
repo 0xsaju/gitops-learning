@@ -107,7 +107,7 @@ jobs:
       - name: Terraform Init
         run: |
           cd infra
-          terraform init -backend-config="bucket=gitops-learning-terraform-state-1753704333" -backend-config="key=terraform.tfstate" -backend-config="region=ap-southeast-1" -backend-config="dynamodb_table=terraform-state-lock" -backend-config="encrypt=true"
+          terraform init -backend-config="bucket=gitops-learning-terraform-state-1753704333" -backend-config="key=${{ steps.env.outputs.environment }}/terraform.tfstate" -backend-config="region=ap-southeast-1" -backend-config="dynamodb_table=terraform-state-lock" -backend-config="encrypt=true"
 
       - name: Terraform Plan
         run: |
@@ -118,6 +118,16 @@ jobs:
         run: |
           cd infra
           terraform apply "${{ steps.env.outputs.environment }}.plan"
+          
+      - name: Validate Terraform State
+        run: |
+          cd infra
+          echo "Validating Terraform state after apply..."
+          terraform state list
+          echo ""
+          echo "Checking for required outputs..."
+          terraform output instance_public_ip || echo "Warning: instance_public_ip output not found"
+          terraform output instance_id || echo "Warning: instance_id output not found"
 
       - name: Get server IP
         id: get-ip
@@ -127,10 +137,19 @@ jobs:
           terraform output
           echo ""
           echo "Getting instance public IP..."
-          SERVER_IP=$(terraform output -raw instance_public_ip)
+          
+          # Try to get the IP with better error handling
+          if ! SERVER_IP=$(terraform output -raw instance_public_ip 2>/dev/null); then
+            echo "Error: Failed to get instance_public_ip output"
+            echo "Checking if instance exists..."
+            terraform state list | grep aws_instance || echo "No instances found in state"
+            exit 1
+          fi
+          
           echo "Server IP: $SERVER_IP"
-          if [ -z "$SERVER_IP" ]; then
-            echo "Error: Server IP is empty!"
+          if [ -z "$SERVER_IP" ] || [ "$SERVER_IP" = "null" ]; then
+            echo "Error: Server IP is empty or null!"
+            echo "This might indicate the instance hasn't been created yet or has no public IP"
             exit 1
           fi
           echo "server_ip=$SERVER_IP" >> $GITHUB_OUTPUT
