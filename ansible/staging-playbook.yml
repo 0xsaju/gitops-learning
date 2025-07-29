@@ -14,6 +14,10 @@
         sudo dpkg --configure -a
       ignore_errors: yes
 
+    - name: Wait a moment for apt to settle
+      pause:
+        seconds: 5
+
     - name: Install required apt packages
       apt:
         name:
@@ -23,7 +27,8 @@
           - software-properties-common
           - git
         state: present
-        update_cache: yes
+        update_cache: no
+      become: yes
 
     - name: Add Docker GPG key
       apt_key:
