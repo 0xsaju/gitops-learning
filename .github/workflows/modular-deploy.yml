@@ -200,7 +200,8 @@ jobs:
             exit 1
           fi
           echo "Testing SSH connectivity to ${{ needs.deploy-infrastructure.outputs.server_ip }}..."
-          # Create SSH config to force password authentication
+          
+          # Create comprehensive SSH config
           mkdir -p ~/.ssh
           cat > ~/.ssh/config << EOF
           Host ${{ needs.deploy-infrastructure.outputs.server_ip }}
@@ -211,16 +212,20 @@ jobs:
             PreferredAuthentications password
             StrictHostKeyChecking no
             ConnectTimeout 10
+            IdentitiesOnly yes
+            IdentityFile /dev/null
           EOF
           chmod 600 ~/.ssh/config
           
-          timeout 60 bash -c 'until sshpass -p "Ubuntu2024!" ssh ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo SSH connection successful"; do echo "Waiting for SSH..."; sleep 10; done'
+          # Test SSH with explicit flags
+          timeout 60 bash -c 'until sshpass -p "Ubuntu2024!" ssh -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo SSH connection successful"; do echo "Waiting for SSH..."; sleep 10; done'
           
       - name: Deploy with Ansible
         run: |
           cd ansible
           echo "Deploying to server IP: ${{ needs.deploy-infrastructure.outputs.server_ip }}"
-          # Create Ansible SSH config
+          
+          # Create comprehensive Ansible SSH config
           mkdir -p ~/.ssh
           cat > ~/.ssh/config << EOF
           Host ${{ needs.deploy-infrastructure.outputs.server_ip }}
@@ -231,10 +236,12 @@ jobs:
             PreferredAuthentications password
             StrictHostKeyChecking no
             ConnectTimeout 10
+            IdentitiesOnly yes
+            IdentityFile /dev/null
           EOF
           chmod 600 ~/.ssh/config
           
-          ansible-playbook -i "staging-inventory-dynamic" "staging-playbook.yml" --extra-vars "staging_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password'
+          ansible-playbook -i "staging-inventory-dynamic" "staging-playbook.yml" --extra-vars "staging_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null'
 
   health-check:
     needs: deploy-application
