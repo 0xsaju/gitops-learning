@@ -79,6 +79,8 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/production'
+    outputs:
+      server_ip: ${{ steps.get-ip.outputs.server_ip }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -153,6 +155,7 @@ jobs:
             exit 1
           fi
           echo "server_ip=$SERVER_IP" >> $GITHUB_OUTPUT
+          echo "✅ Server IP set to: $SERVER_IP"
 
   deploy-application:
     needs: deploy-infrastructure
@@ -184,12 +187,18 @@ jobs:
       - name: Generate Dynamic Inventory
         run: |
           cd ansible
+          echo "🔍 DEBUG: Received server_ip from previous job: '${{ needs.deploy-infrastructure.outputs.server_ip }}'"
           echo "Generating inventory for IP: ${{ needs.deploy-infrastructure.outputs.server_ip }}"
           sed "s/{{ staging_ip }}/${{ needs.deploy-infrastructure.outputs.server_ip }}/g" staging-inventory-template > staging-inventory-dynamic
           cat staging-inventory-dynamic
           
       - name: Test SSH Connectivity
         run: |
+          echo "🔍 DEBUG: Server IP for SSH test: '${{ needs.deploy-infrastructure.outputs.server_ip }}'"
+          if [ -z "${{ needs.deploy-infrastructure.outputs.server_ip }}" ]; then
+            echo "❌ ERROR: Server IP is empty! Cannot test SSH connectivity."
+            exit 1
+          fi
           echo "Testing SSH connectivity to ${{ needs.deploy-infrastructure.outputs.server_ip }}..."
           timeout 60 bash -c 'until sshpass -p "Ubuntu2024!" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo SSH connection successful"; do echo "Waiting for SSH..."; sleep 10; done'
           
