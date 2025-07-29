@@ -109,7 +109,7 @@ jobs:
       - name: Terraform Init
         run: |
           cd infra
-          terraform init -backend-config="bucket=gitops-learning-terraform-state-1753704333" -backend-config="key=${{ steps.env.outputs.environment }}/terraform.tfstate" -backend-config="region=ap-southeast-1" -backend-config="dynamodb_table=terraform-state-lock" -backend-config="encrypt=true"
+          terraform init -backend-config="bucket=gitops-learning-terraform-state-1753768527" -backend-config="key=${{ steps.env.outputs.environment }}/terraform.tfstate" -backend-config="region=ap-southeast-1" -backend-config="dynamodb_table=terraform-state-lock-new" -backend-config="encrypt=true"
 
       - name: Terraform Plan
         run: |
@@ -200,13 +200,41 @@ jobs:
             exit 1
           fi
           echo "Testing SSH connectivity to ${{ needs.deploy-infrastructure.outputs.server_ip }}..."
-          timeout 60 bash -c 'until sshpass -p "Ubuntu2024!" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o PubkeyAuthentication=no -o PasswordAuthentication=yes ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo SSH connection successful"; do echo "Waiting for SSH..."; sleep 10; done'
+          # Create SSH config to force password authentication
+          mkdir -p ~/.ssh
+          cat > ~/.ssh/config << EOF
+          Host ${{ needs.deploy-infrastructure.outputs.server_ip }}
+            HostName ${{ needs.deploy-infrastructure.outputs.server_ip }}
+            User ubuntu
+            PubkeyAuthentication no
+            PasswordAuthentication yes
+            PreferredAuthentications password
+            StrictHostKeyChecking no
+            ConnectTimeout 10
+          EOF
+          chmod 600 ~/.ssh/config
+          
+          timeout 60 bash -c 'until sshpass -p "Ubuntu2024!" ssh ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo SSH connection successful"; do echo "Waiting for SSH..."; sleep 10; done'
           
       - name: Deploy with Ansible
         run: |
           cd ansible
           echo "Deploying to server IP: ${{ needs.deploy-infrastructure.outputs.server_ip }}"
-          ansible-playbook -i "staging-inventory-dynamic" "staging-playbook.yml" --extra-vars "staging_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes'
+          # Create Ansible SSH config
+          mkdir -p ~/.ssh
+          cat > ~/.ssh/config << EOF
+          Host ${{ needs.deploy-infrastructure.outputs.server_ip }}
+            HostName ${{ needs.deploy-infrastructure.outputs.server_ip }}
+            User ubuntu
+            PubkeyAuthentication no
+            PasswordAuthentication yes
+            PreferredAuthentications password
+            StrictHostKeyChecking no
+            ConnectTimeout 10
+          EOF
+          chmod 600 ~/.ssh/config
+          
+          ansible-playbook -i "staging-inventory-dynamic" "staging-playbook.yml" --extra-vars "staging_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password'
 
   health-check:
     needs: deploy-application
