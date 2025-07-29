@@ -129,7 +129,7 @@ jobs:
           echo ""
           echo "Checking for required outputs..."
           terraform output instance_public_ip || echo "Warning: instance_public_ip output not found"
-          terraform output instance_id || echo "Warning: instance_id output not found "
+          terraform output instance_id || echo "Warning: instance_id output not found"
 
       - name: Get server IP
         id: get-ip
