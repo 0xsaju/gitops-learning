@@ -22,9 +22,9 @@
 
     - name: Additional apt cleanup
       shell: |
-        sudo fuser -cuk /var/lib/dpkg/lock-frontend || true
-        sudo fuser -cuk /var/lib/apt/lists/lock || true
-        sudo fuser -cuk /var/cache/apt/archives/lock || true
+        timeout 10 sudo fuser -cuk /var/lib/dpkg/lock-frontend || true
+        timeout 10 sudo fuser -cuk /var/lib/apt/lists/lock || true
+        timeout 10 sudo fuser -cuk /var/cache/apt/archives/lock || true
         sudo rm -f /var/lib/dpkg/lock-frontend
         sudo rm -f /var/lib/apt/lists/lock-frontend
         sudo rm -f /var/lib/apt/lists/lock
