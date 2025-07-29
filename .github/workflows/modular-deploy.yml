@@ -232,7 +232,7 @@ jobs:
           echo "Attempting SSH connection with key authentication..."
           for i in {1..6}; do
             echo "Attempt $i of 6..."
-            if timeout 30 ssh -i ~/.ssh/gitops-key -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'SSH connection successful' && exit 0"; then
+            if timeout 60 ssh -i ~/.ssh/gitops-key -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -o ConnectTimeout=60 -o ServerAliveInterval=60 -o ServerAliveCountMax=3 ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'SSH connection successful' && exit 0"; then
               echo "✅ SSH connection successful!"
               break
             else
@@ -242,10 +242,10 @@ jobs:
           done
           
           # Final test
-          if ! timeout 30 ssh -i ~/.ssh/gitops-key -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'Final SSH test successful'"; then
+          if ! timeout 60 ssh -i ~/.ssh/gitops-key -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -o ConnectTimeout=60 -o ServerAliveInterval=60 -o ServerAliveCountMax=3 ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'Final SSH test successful'"; then
             echo "❌ SSH connection failed after all attempts"
             echo "Debugging SSH configuration..."
-            ssh -i ~/.ssh/gitops-key -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -v ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'Debug test'" || true
+            ssh -i ~/.ssh/gitops-key -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -o ConnectTimeout=60 -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -v ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'Debug test'" || true
             exit 1
           fi
           
@@ -272,7 +272,7 @@ jobs:
           EOF
           chmod 600 ~/.ssh/config
           
-          ansible-playbook -i "staging-inventory-dynamic" "staging-playbook.yml" --extra-vars "staging_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no'
+          ansible-playbook -i "staging-inventory-dynamic" "staging-playbook.yml" --extra-vars "staging_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -o ConnectTimeout=60 -o ServerAliveInterval=60 -o ServerAliveCountMax=3'
 
   health-check:
     needs: deploy-application

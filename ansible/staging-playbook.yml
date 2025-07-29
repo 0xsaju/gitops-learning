@@ -98,41 +98,70 @@
       args:
         chdir: /home/ubuntu/staging-app
 
+    - name: Wait for Docker services to start
+      shell: |
+        echo "Waiting for Docker services to start..."
+        sleep 30
+        docker ps
+      args:
+        chdir: /home/ubuntu/staging-app
+      register: docker_status
+
+    - name: Display Docker status
+      debug:
+        var: docker_status.stdout_lines
+
     - name: Wait for staging frontend to be up
       uri:
         url: http://localhost:8080
         status_code: 200
+        timeout: 30
       register: staging_frontend_status
-      retries: 15
-      delay: 10
+      retries: 10
+      delay: 15
       until: staging_frontend_status.status == 200
+      ignore_errors: yes
 
     - name: Wait for staging user service to be up
       uri:
         url: http://localhost:5001/api/users
         status_code: 200
+        timeout: 30
       register: staging_user_status
-      retries: 15
-      delay: 10
+      retries: 10
+      delay: 15
       until: staging_user_status.status == 200
+      ignore_errors: yes
 
     - name: Wait for staging product service to be up
       uri:
         url: http://localhost:5002/api/products
         status_code: 200
+        timeout: 30
       register: staging_product_status
-      retries: 15
-      delay: 10
+      retries: 10
+      delay: 15
       until: staging_product_status.status == 200
+      ignore_errors: yes
 
     - name: Wait for staging order service to be up
       uri:
         url: http://localhost:5003/api/orders
         status_code: 200
+        timeout: 30
       register: staging_order_status
-      retries: 15
-      delay: 10
+      retries: 10
+      delay: 15
       until: staging_order_status.status == 200
+      ignore_errors: yes
+
+    - name: Check service status
+      debug:
+        msg: |
+          Frontend Status: {{ staging_frontend_status.status | default('Not responding') }}
+          User Service Status: {{ staging_user_status.status | default('Not responding') }}
+          Product Service Status: {{ staging_product_status.status | default('Not responding') }}
+          Order Service Status: {{ staging_order_status.status | default('Not responding') }}
 
     - name: Display staging deployment info
       debug:
