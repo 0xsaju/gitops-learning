@@ -214,11 +214,31 @@ jobs:
             ConnectTimeout 10
             IdentitiesOnly yes
             IdentityFile /dev/null
+            KbdInteractiveAuthentication no
+            GSSAPIAuthentication no
           EOF
           chmod 600 ~/.ssh/config
           
-          # Test SSH with explicit flags
-          timeout 60 bash -c 'until sshpass -p "Ubuntu2024!" ssh -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo SSH connection successful"; do echo "Waiting for SSH..."; sleep 10; done'
+          # Test SSH with explicit flags and better error handling
+          echo "Attempting SSH connection with password authentication..."
+          for i in {1..6}; do
+            echo "Attempt $i of 6..."
+            if timeout 30 sshpass -p "Ubuntu2024!" ssh -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'SSH connection successful' && exit 0"; then
+              echo "✅ SSH connection successful!"
+              break
+            else
+              echo "Attempt $i failed, waiting 10 seconds..."
+              sleep 10
+            fi
+          done
+          
+          # Final test
+          if ! timeout 30 sshpass -p "Ubuntu2024!" ssh -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'Final SSH test successful'"; then
+            echo "❌ SSH connection failed after all attempts"
+            echo "Debugging SSH configuration..."
+            sshpass -p "Ubuntu2024!" ssh -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -v ubuntu@${{ needs.deploy-infrastructure.outputs.server_ip }} "echo 'Debug test'" || true
+            exit 1
+          fi
           
       - name: Deploy with Ansible
         run: |
@@ -238,10 +258,12 @@ jobs:
             ConnectTimeout 10
             IdentitiesOnly yes
             IdentityFile /dev/null
+            KbdInteractiveAuthentication no
+            GSSAPIAuthentication no
           EOF
           chmod 600 ~/.ssh/config
           
-          ansible-playbook -i "staging-inventory-dynamic" "staging-playbook.yml" --extra-vars "staging_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null'
+          ansible-playbook -i "staging-inventory-dynamic" "staging-playbook.yml" --extra-vars "staging_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PreferredAuthentications=password -o IdentitiesOnly=yes -o IdentityFile=/dev/null -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no'
 
   health-check:
     needs: deploy-application

@@ -19,11 +19,11 @@ data "aws_ami" "ubuntu" {
 }
 
 resource "aws_instance" "main" {
-  ami                    = var.ami_id != null ? var.ami_id : data.aws_ami.ubuntu.id
-  instance_type          = var.instance_type
-  subnet_id              = var.subnet_id
-  vpc_security_group_ids = var.security_group_ids
-  key_name               = var.key_name
+  ami                         = var.ami_id != null ? var.ami_id : data.aws_ami.ubuntu.id
+  instance_type               = var.instance_type
+  subnet_id                   = var.subnet_id
+  vpc_security_group_ids      = var.security_group_ids
+  key_name                    = var.key_name
   associate_public_ip_address = true
 
   root_block_device {
@@ -32,7 +32,7 @@ resource "aws_instance" "main" {
     encrypted   = var.encrypt_volumes
   }
 
-  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
+  user_data_base64 = base64encode(templatefile("${path.module}/user_data.sh", {
     environment = var.environment
     ssh_key     = var.ssh_public_key
     password    = var.instance_password
@@ -44,6 +44,11 @@ resource "aws_instance" "main" {
 
   lifecycle {
     create_before_destroy = true
+    # Ignore changes to user_data to prevent unnecessary replacements
+    ignore_changes = [
+      user_data_base64,
+      user_data
+    ]
   }
 }
 
@@ -55,4 +60,4 @@ resource "aws_eip" "main" {
   tags = merge(var.common_tags, {
     Name = "${var.environment}-eip"
   })
-} 
+}

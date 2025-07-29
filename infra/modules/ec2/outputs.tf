@@ -13,11 +13,6 @@ output "instance_private_ip" {
   value       = aws_instance.main.private_ip
 }
 
-output "instance_public_dns" {
-  description = "Public DNS name of the EC2 instance"
-  value       = aws_instance.main.public_dns
-}
-
 output "eip_public_ip" {
   description = "Elastic IP address if allocated"
   value       = var.allocate_eip ? aws_eip.main[0].public_ip : null
@@ -25,5 +20,5 @@ output "eip_public_ip" {
 
 output "ssh_command" {
   description = "SSH command to connect to the instance"
-  value       = "ssh ubuntu@${aws_instance.main.public_ip}"
-} 
+  value       = var.allocate_eip ? "ssh ubuntu@${aws_eip.main[0].public_ip}" : "ssh ubuntu@${aws_instance.main.public_ip}"
+}
