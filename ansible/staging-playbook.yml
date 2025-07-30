@@ -66,6 +66,24 @@
         chdir: /home/ubuntu/staging-app
       become: no
 
+    - name: Verify Docker images are available
+      ansible.builtin.shell: |
+        echo "Available Docker images:"
+        docker images | grep 0xsaju
+        echo "Checking if required images exist..."
+        docker images 0xsaju/flask-user-service:staging
+        docker images 0xsaju/flask-product-service:staging
+        docker images 0xsaju/flask-order-service:staging
+        docker images 0xsaju/flask-frontend:staging
+      args:
+        chdir: /home/ubuntu/staging-app
+      register: docker_images
+      become: no
+
+    - name: Display Docker images status
+      ansible.builtin.debug:
+        var: docker_images.stdout_lines
+
     - name: Start Staging Docker Compose stack
       ansible.builtin.shell: |
         /usr/local/bin/docker-compose -f /home/ubuntu/staging-app/docker-compose.yml up -d
@@ -76,8 +94,13 @@
     - name: Wait for Docker services to start
       ansible.builtin.shell: |
         echo "Waiting for Docker services to initialize..."
-        sleep 30
+        sleep 10
+        echo "Checking Docker status..."
         docker ps
+        echo "Checking Docker Compose status..."
+        docker-compose ps
+        echo "Checking Docker logs..."
+        docker-compose logs --tail=20
       args:
         chdir: /home/ubuntu/staging-app
       register: docker_status
@@ -86,6 +109,10 @@
     - name: Display Docker status
       ansible.builtin.debug:
         var: docker_status.stdout_lines
+
+    - name: Wait additional time for services to be ready
+      ansible.builtin.pause:
+        seconds: 30
 
     - name: Wait for staging frontend to be up
       ansible.builtin.uri:
