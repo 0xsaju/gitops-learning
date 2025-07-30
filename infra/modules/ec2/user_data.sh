@@ -21,7 +21,9 @@ apt-get install -y \
     git \
     unzip \
     htop \
-    tree
+    tree \
+    gnupg \
+    lsb-release
 
 # Set password for ubuntu user
 echo "ubuntu:${password}" | chpasswd
@@ -57,15 +59,25 @@ echo "SSH key configured at $(date)"
 
 # Install Docker
 echo "Installing Docker..."
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
+# Remove any old Docker installations
+apt-get remove -y docker docker-engine docker.io containerd runc || true
+
+# Add Docker's official GPG key
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+# Add Docker repository
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Update package index
 apt-get update
-apt-get install -y docker.io
+
+# Install Docker Engine
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 # Add ubuntu user to docker group
 usermod -aG docker ubuntu
 
-# Install Docker Compose
+# Install Docker Compose (standalone version for compatibility)
 echo "Installing Docker Compose..."
 curl -L "https://github.com/docker/compose/releases/download/v2.24.7/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
@@ -74,7 +86,8 @@ chmod +x /usr/local/bin/docker-compose
 apt-get install -y mysql-client-core-8.0
 
 # Create application directories
-mkdir -p /home/ubuntu/apps
+mkdir -p /home/ubuntu/staging-app
+mkdir -p /home/ubuntu/production-app
 mkdir -p /home/ubuntu/logs
 mkdir -p /home/ubuntu/backups
 
@@ -89,6 +102,12 @@ sysctl -p
 systemctl enable docker
 systemctl start docker
 
+# Verify Docker installation
+echo "Docker version:"
+docker --version
+echo "Docker Compose version:"
+docker-compose --version
+
 # Create systemd service for Docker Compose (optional)
 cat > /etc/systemd/system/docker-compose@.service << EOF
 [Unit]
@@ -99,7 +118,7 @@ After=docker.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=/home/ubuntu/apps/%i
+WorkingDirectory=/home/ubuntu/%i
 ExecStart=/usr/local/bin/docker-compose up -d
 ExecStop=/usr/local/bin/docker-compose down
 TimeoutStartSec=0
@@ -136,7 +155,8 @@ System Information:
 - Docker Compose: $(docker-compose --version)
 
 Application Directories:
-- Apps: /home/ubuntu/apps
+- Staging: /home/ubuntu/staging-app
+- Production: /home/ubuntu/production-app
 - Logs: /home/ubuntu/logs
 - Backups: /home/ubuntu/backups
 
@@ -148,8 +168,7 @@ Useful Commands:
 
 SSH Access:
 - User: ubuntu
-- Password: ${password}
-- Authentication: Password only (keys disabled)
+- Authentication: SSH key only
 
 EOF
 
@@ -159,4 +178,4 @@ chown ubuntu:ubuntu /home/ubuntu/welcome.txt
 cat /home/ubuntu/welcome.txt
 
 echo "User data script completed successfully at $(date)!"
-echo "SSH should now accept password authentication."
+echo "System is ready for Ansible deployment."
