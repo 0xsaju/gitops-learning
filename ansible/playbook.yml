@@ -1,3 +1,4 @@
+# playbook.yml
 ---
 - hosts: web
   become: true
@@ -17,12 +18,12 @@
 
     - name: Add Docker GPG key
       apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
+        url: https://download.docker.com/linux/ubuntu/gpg   
         state: present
 
     - name: Add Docker repository
       apt_repository:
-        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu    focal stable
         state: present
 
     - name: Install Docker
@@ -44,7 +45,7 @@
 
     - name: Download DigiCertGlobalRootCA.crt.pem
       get_url:
-        url: https://dl.cacerts.digicert.com/DigiCertGlobalRootCA.crt.pem
+        url: https://dl.cacerts.digicert.com/DigiCertGlobalRootCA.crt.pem   
         dest: /home/ubuntu/DigiCertGlobalRootCA.crt.pem
         owner: ubuntu
         group: ubuntu
@@ -52,7 +53,7 @@
 
     - name: Install Docker Compose
       get_url:
-        url: "https://github.com/docker/compose/releases/download/v{{ docker_compose_version }}/docker-compose-{{ ansible_system | lower }}-{{ ansible_architecture }}"
+        url: "https://github.com/docker/compose/releases/download/v   {{ docker_compose_version }}/docker-compose-{{ ansible_system | lower }}-{{ ansible_architecture }}"
         dest: /usr/local/bin/docker-compose
         mode: '0755'
 

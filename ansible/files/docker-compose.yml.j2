@@ -30,7 +30,7 @@ services:
       DB_NAME: appdb
       DB_PORT: 3306
       JWT_SECRET: supersecretkey
-      FRONTEND_URL: http://{{ vm_ip.stdout }}:3000
+      FRONTEND_URL: http://{{ staging_ip }}:3000
       PORT: 4000
     ports:
       - "4000:4000"
@@ -43,7 +43,7 @@ services:
     container_name: frontend_app
     restart: always
     environment:
-      REACT_APP_API_URL: {{ api_url }}
+      REACT_APP_API_URL: http://{{ staging_ip }}:4000
     ports:
       - "3000:3000"
     depends_on:

@@ -201,8 +201,14 @@ jobs:
           cd ansible
           echo "🔍 DEBUG: Received server_ip from previous job: '${{ needs.deploy-infrastructure.outputs.server_ip }}'"
           echo "Generating inventory for IP: ${{ needs.deploy-infrastructure.outputs.server_ip }}"
-          sed "s/{{ staging_ip }}/${{ needs.deploy-infrastructure.outputs.server_ip }}/g" staging-inventory-template > staging-inventory-dynamic
-          cat staging-inventory-dynamic
+          
+          if [[ "${{ steps.env.outputs.environment }}" == "staging" ]]; then
+            sed "s/{{ staging_ip }}/${{ needs.deploy-infrastructure.outputs.server_ip }}/g" staging-inventory-template > staging-inventory-dynamic
+            cat staging-inventory-dynamic
+          elif [[ "${{ steps.env.outputs.environment }}" == "production" ]]; then
+            sed "s/{{ production_ip }}/${{ needs.deploy-infrastructure.outputs.server_ip }}/g" production-inventory-template > production-inventory-dynamic
+            cat production-inventory-dynamic
+          fi
           
       - name: Test SSH Connectivity
         run: |
@@ -286,7 +292,11 @@ jobs:
           EOF
           chmod 600 ~/.ssh/config
           
-          ansible-playbook -i "staging-inventory-dynamic" "staging-playbook.yml" --extra-vars "staging_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -o ConnectTimeout=60 -o ServerAliveInterval=60 -o ServerAliveCountMax=3'
+          if [[ "${{ steps.env.outputs.environment }}" == "staging" ]]; then
+            ansible-playbook -i "staging-inventory-dynamic" "staging-playbook.yml" --extra-vars "staging_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -o ConnectTimeout=60 -o ServerAliveInterval=60 -o ServerAliveCountMax=3'
+          elif [[ "${{ steps.env.outputs.environment }}" == "production" ]]; then
+            ansible-playbook -i "production-inventory-dynamic" "production-playbook.yml" --extra-vars "production_ip=${{ needs.deploy-infrastructure.outputs.server_ip }}" --ssh-common-args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -o ConnectTimeout=60 -o ServerAliveInterval=60 -o ServerAliveCountMax=3'
+          fi
 
   health-check:
     needs: deploy-application

@@ -1,0 +1,2 @@
+[production]
+production-server ansible_host={{ production_ip }} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/gitops-key ansible_become=yes ansible_become_method=sudo ansible_become_user=ubuntu ansible_ssh_common_args='-o StrictHostKeyChecking=no -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o KbdInteractiveAuthentication=no -o GSSAPIAuthentication=no -o ConnectTimeout=60 -o ServerAliveInterval=60 -o ServerAliveCountMax=3' 

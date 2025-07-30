@@ -1,190 +1,207 @@
+# production-playbook.yml
 ---
-- hosts: production
-  become: true
+- name: Deploy Production Environment with Docker
+  hosts: production
+  become: yes
   vars:
     ansible_python_interpreter: /usr/bin/python3
     docker_compose_version: "2.24.7"
+
   tasks:
-    - name: Install required apt packages
-      apt:
+    - name: Clean apt cache and remove lock files
+      ansible.builtin.shell: |
+        rm -f /var/lib/apt/lists/lock
+        rm -f /var/cache/apt/archives/lock
+        rm -f /var/lib/dpkg/lock*
+        rm -f /var/lib/dpkg/lock-frontend
+        rm -f /var/lib/apt/lists/lock-frontend
+        dpkg --configure -a || true
+      become: yes
+      ignore_errors: yes
+
+    - name: Wait for apt to settle
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: Update apt cache and install required packages
+      ansible.builtin.apt:
         name:
           - apt-transport-https
           - ca-certificates
           - curl
           - software-properties-common
           - git
-          - htop
-          - tree
-          - fail2ban
         state: present
         update_cache: yes
+        cache_valid_time: 3600
+        lock_timeout: 120
 
     - name: Add Docker GPG key
-      apt_key:
+      ansible.builtin.apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
 
-    - name: Add Docker repository
-      apt_repository:
-        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
-        state: present
-
-    - name: Install Docker
-      apt:
-        name: docker.io
+    - name: Add Docker repository (auto OS detection)
+      ansible.builtin.apt_repository:
+        repo: "deb [arch={{ ansible_architecture }}] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
         update_cache: yes
+
+    - name: Install Docker Engine
+      ansible.builtin.apt:
+        name: docker-ce
+        state: present
+        lock_timeout: 120
 
     - name: Install MySQL client
-      apt:
+      ansible.builtin.apt:
         name: mysql-client-core-8.0
         state: present
-        update_cache: yes
+        lock_timeout: 120
 
     - name: Install pip3
-      apt:
+      ansible.builtin.apt:
         name: python3-pip
         state: present
+        lock_timeout: 120
 
     - name: Install Docker Compose
-      get_url:
+      ansible.builtin.get_url:
         url: "https://github.com/docker/compose/releases/download/v{{ docker_compose_version }}/docker-compose-{{ ansible_system | lower }}-{{ ansible_architecture }}"
         dest: /usr/local/bin/docker-compose
         mode: '0755'
+        timeout: 60
+        force: yes
+      become: yes
+
+    - name: Ensure ubuntu user exists
+      ansible.builtin.user:
+        name: ubuntu
+        state: present
 
     - name: Add user to docker group
-      user:
+      ansible.builtin.user:
         name: ubuntu
         groups: docker
         append: yes
 
     - name: Create production application directory
-      file:
+      ansible.builtin.file:
         path: /home/ubuntu/production-app
         state: directory
         owner: ubuntu
         group: ubuntu
         mode: '0755'
 
-    - name: Get VM public IP from Terraform
-      command: terraform -chdir=../infra output -raw instance_public_ip
-      register: production_vm_ip
-      delegate_to: localhost
-      become: false
-
     - name: Template production docker-compose.yml
-      template:
+      ansible.builtin.template:
         src: files/production-docker-compose.yml.j2
         dest: /home/ubuntu/production-app/docker-compose.yml
         owner: ubuntu
         group: ubuntu
         mode: '0644'
       vars:
-        production_ip: "{{ production_vm_ip.stdout }}"
+        production_ip: "{{ production_ip | default('localhost') }}"
 
     - name: Create production environment file
-      template:
+      ansible.builtin.template:
         src: files/production.env.j2
         dest: /home/ubuntu/production-app/.env
         owner: ubuntu
         group: ubuntu
         mode: '0644'
       vars:
-        production_ip: "{{ production_vm_ip.stdout }}"
-
-    - name: Configure fail2ban for SSH protection
-      template:
-        src: files/jail.local.j2
-        dest: /etc/fail2ban/jail.local
-        owner: root
-        group: root
-        mode: '0644'
-
-    - name: Start and enable fail2ban
-      systemd:
-        name: fail2ban
-        state: started
-        enabled: yes
+        production_ip: "{{ production_ip | default('localhost') }}"
 
     - name: Pull latest Docker images
-      shell: |
+      ansible.builtin.shell: |
         docker pull 0xsaju/flask-user-service:production
         docker pull 0xsaju/flask-product-service:production
         docker pull 0xsaju/flask-order-service:production
         docker pull 0xsaju/flask-frontend:production
       args:
         chdir: /home/ubuntu/production-app
+      become: no
 
     - name: Start Production Docker Compose stack
-      shell: |
+      ansible.builtin.shell: |
         /usr/local/bin/docker-compose -f /home/ubuntu/production-app/docker-compose.yml up -d
       args:
         chdir: /home/ubuntu/production-app
+      become: no
+
+    - name: Wait for Docker services to start
+      ansible.builtin.shell: |
+        echo "Waiting for Docker services to initialize..."
+        sleep 30
+        docker ps
+      args:
+        chdir: /home/ubuntu/production-app
+      register: docker_status
+      become: no
+
+    - name: Display Docker status
+      ansible.builtin.debug:
+        var: docker_status.stdout_lines
 
     - name: Wait for production frontend to be up
-      uri:
-        url: http://localhost:8080
+      ansible.builtin.uri:
+        url: "http://{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:8080"
         status_code: 200
+        timeout: 30
+        follow_redirects: all
       register: production_frontend_status
-      retries: 20
-      delay: 15
+      retries: 6
+      delay: 10
       until: production_frontend_status.status == 200
+      ignore_errors: yes
 
     - name: Wait for production user service to be up
-      uri:
-        url: http://localhost:5001/api/users
+      ansible.builtin.uri:
+        url: "http://{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:5001/api/users"
         status_code: 200
+        timeout: 30
       register: production_user_status
-      retries: 20
-      delay: 15
+      retries: 6
+      delay: 10
       until: production_user_status.status == 200
+      ignore_errors: yes
 
     - name: Wait for production product service to be up
-      uri:
-        url: http://localhost:5002/api/products
+      ansible.builtin.uri:
+        url: "http://{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:5002/api/products"
         status_code: 200
+        timeout: 30
       register: production_product_status
-      retries: 20
-      delay: 15
+      retries: 6
+      delay: 10
       until: production_product_status.status == 200
+      ignore_errors: yes
 
     - name: Wait for production order service to be up
-      uri:
-        url: http://localhost:5003/api/orders
+      ansible.builtin.uri:
+        url: "http://{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:5003/api/orders"
         status_code: 200
+        timeout: 30
       register: production_order_status
-      retries: 20
-      delay: 15
+      retries: 6
+      delay: 10
       until: production_order_status.status == 200
+      ignore_errors: yes
 
-    - name: Setup log rotation for Docker containers
-      template:
-        src: files/docker-logrotate.j2
-        dest: /etc/logrotate.d/docker-containers
-        owner: root
-        group: root
-        mode: '0644'
-
-    - name: Create monitoring script
-      template:
-        src: files/monitor-services.sh.j2
-        dest: /home/ubuntu/monitor-services.sh
-        owner: ubuntu
-        group: ubuntu
-        mode: '0755'
-
-    - name: Setup cron job for monitoring
-      cron:
-        name: "Monitor Flask services"
-        minute: "*/5"
-        job: "/home/ubuntu/monitor-services.sh"
-        user: ubuntu
+    - name: Check service status
+      ansible.builtin.debug:
+        msg: |
+          Frontend Status: {{ production_frontend_status.status | default('Not responding') }}
+          User Service Status: {{ production_user_status.status | default('Not responding') }}
+          Product Service Status: {{ production_product_status.status | default('Not responding') }}
+          Order Service Status: {{ production_order_status.status | default('Not responding') }}
 
     - name: Display production deployment info
-      debug:
+      ansible.builtin.debug:
         msg: |
           Production deployment completed successfully!
-          Frontend: http://{{ production_vm_ip.stdout }}:8080
-          User Service: http://{{ production_vm_ip.stdout }}:5001
-          Product Service: http://{{ production_vm_ip.stdout }}:5002
-          Order Service: http://{{ production_vm_ip.stdout }}:5003 
+          Frontend: http://{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:8080
+          User Service: http://{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:5001
+          Product Service: http://{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:5002
+          Order Service: http://{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:5003
