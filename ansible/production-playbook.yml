@@ -35,35 +35,41 @@
         update_cache: yes
         cache_valid_time: 3600
         lock_timeout: 120
+      become: yes
 
     - name: Add Docker GPG key
       ansible.builtin.apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
+      become: yes
 
     - name: Add Docker repository (auto OS detection)
       ansible.builtin.apt_repository:
         repo: "deb [arch={{ ansible_architecture }}] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
         update_cache: yes
+      become: yes
 
     - name: Install Docker Engine
       ansible.builtin.apt:
         name: docker-ce
         state: present
         lock_timeout: 120
+      become: yes
 
     - name: Install MySQL client
       ansible.builtin.apt:
         name: mysql-client-core-8.0
         state: present
         lock_timeout: 120
+      become: yes
 
     - name: Install pip3
       ansible.builtin.apt:
         name: python3-pip
         state: present
         lock_timeout: 120
+      become: yes
 
     - name: Install Docker Compose
       ansible.builtin.get_url:
@@ -78,12 +84,14 @@
       ansible.builtin.user:
         name: ubuntu
         state: present
+      become: yes
 
     - name: Add user to docker group
       ansible.builtin.user:
         name: ubuntu
         groups: docker
         append: yes
+      become: yes
 
     - name: Create production application directory
       ansible.builtin.file:
@@ -92,6 +100,7 @@
         owner: ubuntu
         group: ubuntu
         mode: '0755'
+      become: yes
 
     - name: Template production docker-compose.yml
       ansible.builtin.template:
@@ -102,6 +111,7 @@
         mode: '0644'
       vars:
         production_ip: "{{ production_ip | default('localhost') }}"
+      become: yes
 
     - name: Create production environment file
       ansible.builtin.template:
@@ -112,6 +122,7 @@
         mode: '0644'
       vars:
         production_ip: "{{ production_ip | default('localhost') }}"
+      become: yes
 
     - name: Pull latest Docker images
       ansible.builtin.shell: |
