@@ -9,7 +9,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/0xsaju/gitops-learning.git
-    targetRevision: HEAD
+    targetRevision: staging
     path: k8s-manifests
   destination:
     server: https://kubernetes.default.svc
