@@ -190,8 +190,8 @@ setup_branches() {
         print_status "✅ Production branch created and pushed"
     fi
 
-    # Switch back to main
-    git checkout main
+    # Stay on staging branch
+    git checkout staging
 }
 
 # Deploy infrastructure
@@ -209,7 +209,8 @@ deploy_infrastructure() {
         -backend-config="key=$environment/terraform.tfstate" \
         -backend-config="region=ap-southeast-1" \
         -backend-config="dynamodb_table=terraform-state-lock-new" \
-        -backend-config="encrypt=true"
+        -backend-config="encrypt=true" \
+        -reconfigure
 
     # Plan the deployment
     print_status "Planning Terraform deployment..."
