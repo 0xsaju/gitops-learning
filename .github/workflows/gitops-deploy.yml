@@ -246,6 +246,9 @@ jobs:
           # Wait for the app-of-apps to be created
           kubectl wait --for=condition=established crd/applications.argoproj.io --timeout=60s
           
+          # Apply the kustomization manually to create individual applications
+          kubectl kustomize k8s-manifests/ | kubectl apply -f -
+          
           # Wait for app-of-apps to be synced
           kubectl wait --for=condition=available application/app-of-apps -n argocd --timeout=300s
 
