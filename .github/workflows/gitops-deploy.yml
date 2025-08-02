@@ -141,21 +141,49 @@ jobs:
 
       - name: Install ArgoCD
         run: |
-          # Add ArgoCD Helm repository
-          helm repo add argo https://argoproj.github.io/argo-helm
-          helm repo update
-          
-          # Install ArgoCD
-          helm upgrade --install argocd argo/argocd \
-            --namespace argocd \
-            --create-namespace \
-            --values argocd/values.yaml \
-            --set server.ingress.hosts[0]=argocd.${{ steps.env.outputs.environment }}.example.com \
-            --wait
+          # Check if ArgoCD is already installed
+          if kubectl get namespace argocd >/dev/null 2>&1; then
+            echo "ArgoCD namespace exists, checking if ArgoCD is running..."
+            if kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server --no-headers | grep -q Running; then
+              echo "ArgoCD is already running, skipping installation"
+            else
+              echo "ArgoCD namespace exists but not running, reinstalling..."
+              # Add ArgoCD Helm repository
+              helm repo add argo https://argoproj.github.io/argo-helm
+              helm repo update
+              
+              # Install ArgoCD
+              helm upgrade --install argocd argo/argocd \
+                --namespace argocd \
+                --create-namespace \
+                --values argocd/values.yaml \
+                --set server.ingress.hosts[0]=argocd.${{ steps.env.outputs.environment }}.example.com \
+                --wait
+            fi
+          else
+            echo "Installing ArgoCD for the first time..."
+            # Add ArgoCD Helm repository
+            helm repo add argo https://argoproj.github.io/argo-helm
+            helm repo update
+            
+            # Install ArgoCD
+            helm upgrade --install argocd argo/argocd \
+              --namespace argocd \
+              --create-namespace \
+              --values argocd/values.yaml \
+              --set server.ingress.hosts[0]=argocd.${{ steps.env.outputs.environment }}.example.com \
+              --wait
+          fi
 
       - name: Wait for ArgoCD to be ready
         run: |
-          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
+          # Check if ArgoCD pods are already ready
+          if kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server --no-headers | grep -q Running; then
+            echo "ArgoCD is already running and ready"
+          else
+            echo "Waiting for ArgoCD to be ready..."
+            kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
+          fi
 
       - name: Apply App-of-Apps
         run: |
