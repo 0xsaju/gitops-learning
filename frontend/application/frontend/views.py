@@ -6,7 +6,7 @@ from .. import login_manager
 from .api.UserClient import UserClient
 from .api.ProductClient import ProductClient
 from .api.OrderClient import OrderClient
-from flask import render_template, session, redirect, url_for, flash, request
+from flask import render_template, session, redirect, url_for, flash, request, jsonify
 
 from flask_login import current_user
 
@@ -14,6 +14,24 @@ from flask_login import current_user
 @login_manager.user_loader
 def load_user(user_id):
     return None
+
+
+@frontend_blueprint.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for Kubernetes"""
+    try:
+        # Test if the application is running
+        return jsonify({
+            'status': 'healthy',
+            'service': 'frontend',
+            'message': 'Frontend service is running'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'service': 'frontend',
+            'error': str(e)
+        }), 503
 
 
 @frontend_blueprint.route('/', methods=['GET'])

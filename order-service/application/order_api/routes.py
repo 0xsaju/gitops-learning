@@ -6,6 +6,26 @@ from ..models import Order, OrderItem
 from .api.UserClient import UserClient
 
 
+@order_api_blueprint.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for Kubernetes"""
+    try:
+        # Test database connection
+        db.session.execute('SELECT 1')
+        return jsonify({
+            'status': 'healthy',
+            'service': 'order-service',
+            'database': 'connected'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'service': 'order-service',
+            'database': 'disconnected',
+            'error': str(e)
+        }), 503
+
+
 @order_api_blueprint.route('/api/orders', methods=['GET'])
 def orders():
     items = []

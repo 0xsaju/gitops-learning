@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: gitops-applications
+
+resources:
+  - argocd-applications
+  - namespaces
+  - external-secrets
+
+commonLabels:
+  app.kubernetes.io/part-of: gitops-learning
+  app.kubernetes.io/managed-by: argocd
+
+commonAnnotations:
+  argocd.argoproj.io/sync-wave: "0" 

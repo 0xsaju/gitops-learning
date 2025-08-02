@@ -1,0 +1,115 @@
+# ArgoCD Helm Values for GitOps Infrastructure
+
+# Global configuration
+global:
+  image:
+    repository: quay.io/argoproj/argocd
+    tag: v2.8.4
+
+# Server configuration
+server:
+  # External access via ALB
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: alb
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/certificate-arn: ""  # Add your SSL certificate ARN
+    hosts:
+      - argocd-staging.example.com  # ALB will automatically assign DNS
+    tls:
+      - secretName: argocd-server-tls
+        hosts:
+          - argocd-staging.example.com
+
+  # RBAC configuration
+  rbac:
+    create: true
+    pspEnabled: false
+    rules:
+      - apiGroups: [""]
+        resources: ["secrets"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: [""]
+        resources: ["configmaps"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: [""]
+        resources: ["services"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: [""]
+        resources: ["endpoints"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: [""]
+        resources: ["events"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "replicasets", "statefulsets"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: ["networking.k8s.io"]
+        resources: ["ingresses"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: ["batch"]
+        resources: ["jobs", "cronjobs"]
+        verbs: ["get", "list", "watch"]
+
+  # Security settings
+  extraArgs:
+    - --insecure
+    - --rootpath
+    - /argocd
+
+# Repository configuration
+repoServer:
+  service:
+    type: ClusterIP
+
+# Application controller
+applicationSet:
+  enabled: true
+
+# Redis for caching
+redis:
+  enabled: true
+  auth:
+    enabled: false
+
+# HA configuration (disabled for cost optimization)
+controller:
+  replicas: 1
+repoServer:
+  replicas: 1
+server:
+  replicas: 1
+
+# Resource limits
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# Service account for IRSA
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: ""  # Will be set by Terraform
+
+# Config management plugins
+configManagementPlugins: |
+  - name: kustomize
+    init:
+      command: [kustomize, build]
+      args: [--enable-helm]
+    generate:
+      command: [kustomize, build]
+      args: [--enable-helm]
+
+ 

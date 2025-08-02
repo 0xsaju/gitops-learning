@@ -20,7 +20,14 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://dbuser:testpass123@order-db:3306/order_management'
+    # Use environment variables for Kubernetes deployment
+    MYSQL_HOST = os.environ.get('MYSQL_HOST', 'mysql')
+    MYSQL_PORT = os.environ.get('MYSQL_PORT', '3306')
+    MYSQL_USER = os.environ.get('MYSQL_USER', 'flask_user')
+    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'FlaskPassWord123')
+    MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'flask_microservices')
+    
+    SQLALCHEMY_DATABASE_URI = f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}'
     SQLALCHEMY_ECHO = False
 
 config = {

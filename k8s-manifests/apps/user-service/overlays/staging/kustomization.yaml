@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: user-service-staging
+
+namespace: user-service
+
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: Deployment
+      name: user-service
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: 0xsaju/flask-user-service:staging
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+commonLabels:
+  environment: staging
+  app.kubernetes.io/environment: staging
+
+commonAnnotations:
+  argocd.argoproj.io/sync-wave: "1" 

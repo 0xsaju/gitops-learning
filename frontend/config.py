@@ -21,4 +21,15 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     ENV = "production"
     DEBUG = False
+    # Use environment variables for Kubernetes deployment
+    USER_SERVICE_URL = os.environ.get('USER_SERVICE_URL', 'http://user-service:5001')
+    PRODUCT_SERVICE_URL = os.environ.get('PRODUCT_SERVICE_URL', 'http://product-service:5002')
+    ORDER_SERVICE_URL = os.environ.get('ORDER_SERVICE_URL', 'http://order-service:5003')
+
+
+config = {
+    'development': DevelopmentConfig,
+    'production': ProductionConfig,
+    'default': DevelopmentConfig
+}
 
