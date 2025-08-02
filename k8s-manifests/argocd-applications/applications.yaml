@@ -11,7 +11,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-username/gitops-learning.git
+    repoURL: https://github.com/0xsaju/gitops-learning.git
     targetRevision: HEAD
     path: k8s-manifests/apps/user-service
   destination:
@@ -38,7 +38,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-username/gitops-learning.git
+    repoURL: https://github.com/0xsaju/gitops-learning.git
     targetRevision: HEAD
     path: k8s-manifests/apps/product-service
   destination:
@@ -65,7 +65,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-username/gitops-learning.git
+    repoURL: https://github.com/0xsaju/gitops-learning.git
     targetRevision: HEAD
     path: k8s-manifests/apps/order-service
   destination:
@@ -92,7 +92,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-username/gitops-learning.git
+    repoURL: https://github.com/0xsaju/gitops-learning.git
     targetRevision: HEAD
     path: k8s-manifests/apps/frontend
   destination:
