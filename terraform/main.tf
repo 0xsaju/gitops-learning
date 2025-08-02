@@ -84,6 +84,9 @@ module "eks" {
     }
   }
 
+  # Enable public access for external connectivity
+  cluster_endpoint_public_access = true
+
   # Node Groups
   eks_managed_node_groups = {
     general = {
