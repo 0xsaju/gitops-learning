@@ -229,6 +229,12 @@ jobs:
           echo "ARGOCD_ALB_DNS=$ALB_DNS" >> $GITHUB_ENV
           echo "ArgoCD ALB DNS: $ALB_DNS"
 
+      - name: Install ArgoCD CLI
+        run: |
+          curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+          rm argocd-linux-amd64
+
       - name: Sync ArgoCD applications
         run: |
           # Wait for ArgoCD to be ready
