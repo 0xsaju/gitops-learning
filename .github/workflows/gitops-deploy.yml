@@ -243,11 +243,14 @@ jobs:
           # Get ALB DNS
           ALB_DNS=$(kubectl get ingress argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
           
+          # Login to ArgoCD
+          argocd login $ALB_DNS --username admin --password $ARGOCD_PASSWORD --insecure
+          
           # Sync all applications
-          argocd app sync app-of-apps --server $ALB_DNS --username admin --password $ARGOCD_PASSWORD --insecure
+          argocd app sync app-of-apps
           
           # Wait for sync to complete
-          argocd app wait app-of-apps --server $ALB_DNS --username admin --password $ARGOCD_PASSWORD --insecure
+          argocd app wait app-of-apps
 
   # Health Check
   health-check:
