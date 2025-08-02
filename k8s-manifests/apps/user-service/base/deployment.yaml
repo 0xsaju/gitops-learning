@@ -19,7 +19,7 @@ spec:
       serviceAccountName: user-service-sa
       containers:
       - name: user-service
-        image: 0xsaju/flask-user-service:latest
+        image: 274949445690.dkr.ecr.ap-southeast-1.amazonaws.com/user-service:staging
         ports:
         - containerPort: 5001
           name: http
