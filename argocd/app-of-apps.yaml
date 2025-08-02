@@ -8,7 +8,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-username/gitops-learning.git
+    repoURL: https://github.com/0xsaju/gitops-learning.git
     targetRevision: HEAD
     path: k8s-manifests
   destination:
