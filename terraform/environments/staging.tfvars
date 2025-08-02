@@ -13,7 +13,7 @@ kubernetes_version = "1.28"
 node_group_desired_capacity = 1
 node_group_max_size         = 2
 node_group_min_size         = 1
-node_group_instance_types   = ["t3.micro"]  # Free Tier eligible
+node_group_instance_types   = ["t3.small"]  # Minimum for EKS add-ons
 
 # Application Repositories
 app_repositories = [
