@@ -76,7 +76,7 @@ jobs:
         with:
           context: ./${{ matrix.service }}
           push: true
-          tags: ${{ steps.aws-account.outputs.account }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ matrix.service }}:${{ steps.env.outputs.docker_tag }}
+          tags: ${{ needs.aws-account.outputs.account }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ matrix.service }}:${{ steps.env.outputs.docker_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
