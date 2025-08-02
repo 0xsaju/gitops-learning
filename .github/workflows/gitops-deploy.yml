@@ -240,17 +240,14 @@ jobs:
           # Wait for ArgoCD to be ready
           kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
           
-          # Get ALB DNS
-          ALB_DNS=$(kubectl get ingress argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          # Apply the app-of-apps directly using kubectl (no authentication needed)
+          kubectl apply -f argocd/app-of-apps.yaml
           
-          # Login to ArgoCD
-          argocd login $ALB_DNS --username admin --password $ARGOCD_PASSWORD --insecure
+          # Wait for the app-of-apps to be created
+          kubectl wait --for=condition=established crd/applications.argoproj.io --timeout=60s
           
-          # Sync all applications
-          argocd app sync app-of-apps
-          
-          # Wait for sync to complete
-          argocd app wait app-of-apps
+          # Wait for app-of-apps to be synced
+          kubectl wait --for=condition=available application/app-of-apps -n argocd --timeout=300s
 
   # Health Check
   health-check:
