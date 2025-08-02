@@ -5,9 +5,9 @@ metadata:
   name: gitops-applications
 
 resources:
-  - argocd-applications
-  - namespaces
-  - external-secrets
+  - argocd-applications/applications.yaml
+  - namespaces/namespaces.yaml
+  - external-secrets/external-secrets.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: gitops-learning
