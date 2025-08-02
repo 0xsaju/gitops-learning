@@ -70,7 +70,7 @@ module "eks" {
   cluster_version = var.kubernetes_version
 
   vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnets
+  subnet_ids = [module.vpc.private_subnets[0]]  # Use only first subnet for cost optimization
 
   # EKS Cluster Security Group
   cluster_security_group_additional_rules = {
