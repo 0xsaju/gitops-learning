@@ -53,29 +53,54 @@ def get_users():
     response = jsonify(data)
     return response
 
+
 @user_api_blueprint.route('/api/user/create', methods=['POST'])
 def post_register():
-    first_name = request.form['first_name']
-    last_name = request.form['last_name']
-    email = request.form['email']
-    username = request.form['username']
+    try:
+        # Handle both form data and JSON
+        if request.is_json:
+            data = request.get_json()
+            first_name = data.get('first_name')
+            last_name = data.get('last_name')
+            email = data.get('email')
+            username = data.get('username')
+            password = data.get('password')
+        else:
+            first_name = request.form.get('first_name')
+            last_name = request.form.get('last_name')
+            email = request.form.get('email')
+            username = request.form.get('username')
+            password = request.form.get('password')
 
-    password = sha256_crypt.hash((str(request.form['password'])))
+        # Validation
+        if not all([first_name, last_name, email, username, password]):
+            return jsonify({'message': 'All fields are required'}), 400
 
-    user = User()
-    user.email = email
-    user.first_name = first_name
-    user.last_name = last_name
-    user.password = password
-    user.username = username
-    user.authenticated = True
+        # Check if user already exists
+        if User.query.filter_by(username=username).first():
+            return jsonify({'message': 'Username already exists'}), 409
+        
+        if User.query.filter_by(email=email).first():
+            return jsonify({'message': 'Email already exists'}), 409
 
-    db.session.add(user)
-    db.session.commit()
+        # Create user
+        user = User()
+        user.email = email
+        user.first_name = first_name
+        user.last_name = last_name
+        user.password = sha256_crypt.hash(str(password))
+        user.username = username
+        user.authenticated = True
 
-    response = jsonify({'message': 'User added', 'result': user.to_json()})
+        db.session.add(user)
+        db.session.commit()
 
-    return response
+        response = jsonify({'message': 'User created successfully', 'result': user.to_json()})
+        return response
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Registration failed', 'error': str(e)}), 500
 
 
 @user_api_blueprint.route('/api/user/login', methods=['POST'])
@@ -116,5 +141,4 @@ def get_username(username):
 def get_user():
     if current_user.is_authenticated:
         return make_response(jsonify({'result': current_user.to_json()}))
-
     return make_response(jsonify({'message': 'Not logged in'})), 401

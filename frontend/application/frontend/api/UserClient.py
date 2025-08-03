@@ -1,56 +1,72 @@
 # application/frontend/api/UserClient.py
 import requests
-from flask import session, request
 import os
-
+from flask import session
 
 class UserClient:
     @staticmethod
-    def post_login(form):
-        api_key = False
-        payload = {
-            'username': form.username.data,
-            'password': form.password.data
-        }
-        url = os.environ.get('USER_SERVICE_URL', 'http://user-service:5001') + '/api/user/login'
-        response = requests.request("POST", url=url, data=payload)
-        if response:
-            d = response.json()
-            print("This is response from user api: " + str(d))
-            if d['api_key'] is not None:
-                api_key = d['api_key']
-        return api_key
+    def get_user_service_url():
+        return os.environ.get('USER_SERVICE_URL', 'http://user-service.user-service.svc.cluster.local:5001')
 
     @staticmethod
-    def get_user():
-
-        headers = {
-            'Authorization': 'Basic ' + session['user_api_key']
-        }
-        url = os.environ.get('USER_SERVICE_URL', 'http://user-service:5001') + '/api/user'
-        response = requests.request(method="GET", url=url, headers=headers)
-        user = response.json()
-        return user
-
-    @staticmethod
-    def post_user_create(form):
-        user = False
-        payload = {
-            'email': form.email.data,
-            'password': form.password.data,
-            'first_name': form.first_name.data,
-            'last_name': form.last_name.data,
-            'username': form.username.data
-        }
-        url = os.environ.get('USER_SERVICE_URL', 'http://user-service:5001') + '/api/user/create'
-        response = requests.request("POST", url=url, data=payload)
-        if response:
-            user = response.json()
-        return user
+    def post_user_create_direct(username, first_name, last_name, email, password):
+        try:
+            url = f"{UserClient.get_user_service_url()}/api/user/create"
+            data = {
+                'username': username,
+                'first_name': first_name,
+                'last_name': first_name,
+                'email': email,
+                'password': password
+            }
+            response = requests.post(url, data=data, timeout=10)
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception as e:
+            print(f"Error creating user: {e}")
+            return None
 
     @staticmethod
     def does_exist(username):
-        url = os.environ.get('USER_SERVICE_URL', 'http://user-service:5001') + '/api/user/' + username + '/exists'
-        response = requests.request("GET", url=url)
-        return response.status_code == 200
+        try:
+            url = f"{UserClient.get_user_service_url()}/api/user/{username}/exists"
+            response = requests.get(url, timeout=10)
+            return response.status_code == 200
+        except Exception:
+            return False
+
+    @staticmethod
+    def post_login(form):
+        try:
+            url = f"{UserClient.get_user_service_url()}/api/user/login"
+            data = {
+                'username': form.username.data,
+                'password': form.password.data
+            }
+            response = requests.post(url, data=data, timeout=10)
+            if response.status_code == 200:
+                result = response.json()
+                return result.get('api_key')
+            return None
+        except Exception as e:
+            print(f"Error logging in: {e}")
+            return None
+
+    @staticmethod
+    def get_user():
+        try:
+            api_key = session.get('user_api_key')
+            if not api_key:
+                return None
+                
+            url = f"{UserClient.get_user_service_url()}/api/user"
+            headers = {'Authorization': f'Basic {api_key}'}
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception as e:
+            print(f"Error getting user: {e}")
+            return None
 

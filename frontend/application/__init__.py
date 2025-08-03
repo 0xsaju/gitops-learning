@@ -4,9 +4,11 @@ import os
 from flask import Flask
 from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
+from flask_wtf.csrf import CSRFProtect
 
 login_manager = LoginManager()
 bootstrap = Bootstrap()
+csrf = CSRFProtect()
 UPLOAD_FOLDER = 'application/static/images'
 
 
@@ -22,6 +24,7 @@ def create_app():
     login_manager.login_view = "frontend.login"
 
     bootstrap.init_app(app)
+    csrf.init_app(app)
 
     with app.app_context():
         from .frontend import frontend_blueprint

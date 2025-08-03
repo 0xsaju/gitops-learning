@@ -129,15 +129,28 @@ install_argocd() {
     helm repo add argo https://argoproj.github.io/argo-helm
     helm repo update
 
+    # Check which chart name is available
+    if helm search repo argo/argo-cd | grep -q "argo-cd"; then
+        CHART_NAME="argo-cd"
+    elif helm search repo argo/argocd | grep -q "argocd"; then
+        CHART_NAME="argocd"
+    else
+        print_error "Could not find ArgoCD chart"
+        helm search repo argo
+        exit 1
+    fi
+
+    print_status "Using chart: argo/$CHART_NAME"
+
     # Create namespace
     kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 
     # Install ArgoCD
-    helm upgrade --install argocd argo/argocd \
+    helm upgrade --install argocd argo/$CHART_NAME \
         --namespace argocd \
         --values argocd/values.yaml \
         --set server.ingress.hosts[0]="argocd.${environment}.example.com" \
-        --wait
+        --wait --timeout=600s
 
     # Wait for ArgoCD to be ready
     print_status "Waiting for ArgoCD to be ready..."
@@ -240,4 +253,4 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     exit 0
 fi
 
-main "$@" 
+main "$@"

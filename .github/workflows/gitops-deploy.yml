@@ -139,6 +139,19 @@ jobs:
             --region ${{ env.AWS_REGION }} \
             --name ${{ steps.env.outputs.environment }}-cluster
 
+      - name: Install External Secrets Operator
+        run: |
+          # Add External Secrets Helm repository
+          helm repo add external-secrets https://charts.external-secrets.io
+          helm repo update
+          
+          # Install External Secrets Operator
+          helm upgrade --install external-secrets external-secrets/external-secrets \
+            --namespace external-secrets-system \
+            --create-namespace \
+            --set installCRDs=true \
+            --wait --timeout=300s
+
       - name: Install ArgoCD
         run: |
           # Check if ArgoCD is already installed
@@ -148,32 +161,64 @@ jobs:
               echo "ArgoCD is already running, skipping installation"
             else
               echo "ArgoCD namespace exists but not running, reinstalling..."
-              # Add ArgoCD Helm repository
               helm repo add argo https://argoproj.github.io/argo-helm
               helm repo update
               
-              # Install ArgoCD
-              helm upgrade --install argocd argo/argocd \
+              # Check which chart name is available
+              if helm search repo argo/argo-cd | grep -q "argo-cd"; then
+                CHART_NAME="argo-cd"
+              elif helm search repo argo/argocd | grep -q "argocd"; then
+                CHART_NAME="argocd"
+              else
+                echo "Could not find ArgoCD chart"
+                helm search repo argo
+                exit 1
+              fi
+              
+              echo "Using chart: argo/$CHART_NAME"
+              
+              helm upgrade --install argocd argo/$CHART_NAME \
                 --namespace argocd \
                 --create-namespace \
                 --values argocd/values.yaml \
                 --set server.ingress.hosts[0]=argocd.${{ steps.env.outputs.environment }}.example.com \
-                --wait
+                --wait --timeout=600s
             fi
           else
             echo "Installing ArgoCD for the first time..."
-            # Add ArgoCD Helm repository
             helm repo add argo https://argoproj.github.io/argo-helm
             helm repo update
             
-            # Install ArgoCD
-            helm upgrade --install argocd argo/argocd \
+            # Check which chart name is available
+            if helm search repo argo/argo-cd | grep -q "argo-cd"; then
+              CHART_NAME="argo-cd"
+            elif helm search repo argo/argocd | grep -q "argocd"; then
+              CHART_NAME="argocd"
+            else
+              echo "Could not find ArgoCD chart"
+              helm search repo argo
+              exit 1
+            fi
+            
+            echo "Using chart: argo/$CHART_NAME"
+            
+            helm upgrade --install argocd argo/$CHART_NAME \
               --namespace argocd \
               --create-namespace \
               --values argocd/values.yaml \
               --set server.ingress.hosts[0]=argocd.${{ steps.env.outputs.environment }}.example.com \
-              --wait
+              --wait --timeout=600s
           fi
+
+      - name: Configure External Secrets ServiceAccount
+        run: |
+          # Get the External Secrets role ARN from Terraform output
+          EXTERNAL_SECRETS_ROLE_ARN=$(cd terraform && terraform output -raw external_secrets_role_arn)
+          
+          # Patch the ServiceAccount with the role ARN
+          kubectl patch serviceaccount external-secrets-sa \
+            -n external-secrets-system \
+            -p '{"metadata":{"annotations":{"eks.amazonaws.com/role-arn":"'$EXTERNAL_SECRETS_ROLE_ARN'"}}}'
 
       - name: Wait for ArgoCD to be ready
         run: |
@@ -303,6 +348,25 @@ jobs:
           USER_SERVICE_IP=$(kubectl get service user-service -n user-service -o jsonpath='{.spec.clusterIP}')
           kubectl run test-curl --image=curlimages/curl -i --rm --restart=Never -- curl -f http://$USER_SERVICE_IP:5001/health || exit 1
 
+      - name: Test application functionality
+        run: |
+          # Get the ALB endpoint
+          ALB_ENDPOINT=$(kubectl get ingress -n frontend frontend-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          
+          echo "Testing application functionality on: $ALB_ENDPOINT"
+          
+          # Test user registration
+          echo "Testing user registration..."
+          REGISTER_RESPONSE=$(curl -s -X POST -d "username=testuser&first_name=Test&last_name=User&email=test@example.com&password=testpass123" \
+            http://$ALB_ENDPOINT/register || echo "Registration test failed")
+          
+          # Test user login
+          echo "Testing user login..."
+          LOGIN_RESPONSE=$(curl -s -X POST -d "username=testuser&password=testpass123" \
+            http://$ALB_ENDPOINT/login || echo "Login test failed")
+          
+          echo "Basic functionality tests completed"
+
       - name: Get ArgoCD ALB DNS
         run: |
           # Get the ArgoCD ALB DNS name
@@ -313,4 +377,4 @@ jobs:
         run: |
           echo "🎉 ${{ steps.env.outputs.environment }} deployment successful!"
           echo "ArgoCD URL: https://$ARGOCD_ALB_DNS"
-          echo "Application URL: http://$ALB_ENDPOINT" 
+          echo "Application URL: http://$ALB_ENDPOINT"

@@ -5,13 +5,14 @@ metadata:
   name: gitops-applications
 
 resources:
-  - argocd-applications/applications.yaml
   - namespaces/namespaces.yaml
+  - external-secrets/external-secrets-operator.yaml
   - external-secrets/external-secrets.yaml
+  - argocd-applications/applications.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: gitops-learning
   app.kubernetes.io/managed-by: argocd
 
 commonAnnotations:
-  argocd.argoproj.io/sync-wave: "0" 
+  argocd.argoproj.io/sync-wave: "0"

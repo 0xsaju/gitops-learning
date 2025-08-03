@@ -231,6 +231,135 @@ resource "aws_iam_role_policy" "argocd" {
   })
 }
 
+# IAM Role for External Secrets Operator
+resource "aws_iam_role" "external_secrets" {
+  name = "${var.environment}-external-secrets-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Effect = "Allow"
+        Principal = {
+          Federated = module.eks.oidc_provider_arn
+        }
+        Condition = {
+          StringEquals = {
+            "${module.eks.oidc_provider}:aud" : "sts.amazonaws.com",
+            "${module.eks.oidc_provider}:sub" : "system:serviceaccount:external-secrets-system:external-secrets-sa"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = var.common_tags
+}
+
+# IAM Policy for External Secrets Operator
+resource "aws_iam_role_policy" "external_secrets" {
+  name = "${var.environment}-external-secrets-policy"
+  role = aws_iam_role.external_secrets.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:*:secret:gitops-learning/*"
+      }
+    ]
+  })
+}
+
+# RDS Subnet Group
+resource "aws_db_subnet_group" "main" {
+  name       = "${var.environment}-db-subnet-group"
+  subnet_ids = module.vpc.private_subnets
+
+  tags = merge(var.common_tags, {
+    Name = "${var.environment}-db-subnet-group"
+  })
+}
+
+# RDS Security Group
+resource "aws_security_group" "rds" {
+  name_prefix = "${var.environment}-rds-"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.node_group.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(var.common_tags, {
+    Name = "${var.environment}-rds-sg"
+  })
+}
+
+# RDS PostgreSQL Instance
+resource "aws_db_instance" "main" {
+  identifier = "${var.environment}-postgres"
+
+  engine         = "postgres"
+  engine_version = "15.13"  # Updated to available version
+  instance_class = "db.t3.micro"  # Free tier eligible
+
+  allocated_storage     = 20
+  max_allocated_storage = 100
+  storage_type          = "gp2"
+  storage_encrypted     = true
+
+  db_name  = "gitopsdb"
+  username = "postgres"
+  manage_master_user_password = true
+
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+
+  backup_retention_period = 7
+  backup_window          = "03:00-04:00"
+  maintenance_window     = "sun:04:00-sun:05:00"
+
+  skip_final_snapshot = true
+  deletion_protection = false
+
+  tags = var.common_tags
+}
+
+# AWS Secrets Manager for database credentials
+resource "aws_secretsmanager_secret" "database" {
+  name = "gitops-learning/database"
+  
+  tags = var.common_tags
+}
+
+resource "aws_secretsmanager_secret_version" "database" {
+  secret_id = aws_secretsmanager_secret.database.id
+  secret_string = jsonencode({
+    url      = "postgresql://${aws_db_instance.main.username}:${aws_db_instance.main.master_user_secret[0].secret_arn}@${aws_db_instance.main.endpoint}/${aws_db_instance.main.db_name}"
+    password = aws_db_instance.main.master_user_secret[0].secret_arn
+    host     = aws_db_instance.main.endpoint
+    port     = aws_db_instance.main.port
+    database = aws_db_instance.main.db_name
+    username = aws_db_instance.main.username
+  })
+}
+
 # Kubernetes Provider
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
@@ -294,4 +423,14 @@ output "ecr_repository_urls" {
 output "kubeconfig_command" {
   description = "Command to configure kubeconfig"
   value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
-} 
+}
+
+output "rds_endpoint" {
+  description = "RDS instance endpoint"
+  value       = aws_db_instance.main.endpoint
+}
+
+output "external_secrets_role_arn" {
+  description = "External Secrets IAM role ARN"
+  value       = aws_iam_role.external_secrets.arn
+}

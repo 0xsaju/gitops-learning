@@ -23,12 +23,14 @@ spec:
         - containerPort: 5000
           name: http
         env:
+        - name: CONFIGURATION_SETUP
+          value: "config.ProductionConfig"
         - name: USER_SERVICE_URL
-          value: "http://user-service:5001"
+          value: "http://user-service.user-service.svc.cluster.local:5001"
         - name: PRODUCT_SERVICE_URL
-          value: "http://product-service:5002"
+          value: "http://product-service.product-service.svc.cluster.local:5002"
         - name: ORDER_SERVICE_URL
-          value: "http://order-service:5003"
+          value: "http://order-service.order-service.svc.cluster.local:5003"
         resources:
           requests:
             memory: "128Mi"
